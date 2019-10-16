@@ -22,23 +22,33 @@
 (defun int->power (a)
   (position a +powers-of-2+))
 
-(defmacro add (&rest integers)
-  `(logxor ,@integers))
+(defun add (&rest integers)
+  (apply #'logxor integers))
 
-(defmacro sub (&rest integers)
-  `(add ,@integers))
+(defun sub (&rest integers)
+  (apply #'add integers))
 
 (defun mul-exponents (a b)
   (mod (+ a b) 255))
 
 (defun mul (a b)
-  (elt +powers-of-2+ (mul-exponents (int->power a) (int->power b))))
+  (if (or (= 0 a) (= 0 b))
+      0
+      (elt +powers-of-2+ (mul-exponents (int->power a) (int->power b)))))
 
 ;; Polynomial representation:
 ;; f(x) = c0 + c1*x1 + ... + cn*xn
 ;; where ci is of the form 2^ki or 0.
 ;; Put f into a list like so: (c0 c1 ... cn).
 ;; Note: negative numbers don't exist in this field.
+
+(defun polynom-trim (f)
+  "Remove excess zero coefficients."
+  (let ((j (1- (length f))))
+    (loop while (and (>= j 0) (= 0 (elt f j))) do (decf j))
+    (if (>= j 0)
+        (subseq f 0 (1+ j))
+        f)))
 
 (defun order (f)
   (1- (length f)))
@@ -59,12 +69,43 @@
            do (setf (elt result exponent) (add (mul a b) (elt result exponent)))))
     result))
 
-(defun polynom-div (f g)
-  
-  )
+(defun polynom-mul-scalar (f alpha)
+  (polynom-mul f (list alpha)))
+
+(defun polynom-mul-x^n (f n)
+  ;; Simply add n zeros to the front of the polynomial list.
+  (concatenate 'list
+               (loop repeat n collect 0)
+               f))
+
+(defun polynom-add (f g)
+  ;; Trim the result in case some coefficients cancel out. 
+  (polynom-trim (map 'list #'add f g)))
+
+(defun ec-polynom-div (f g ec-codewords)
+  ;; Assume that the leading coefficient of g is 1.
+  (loop repeat (length f)
+        initially (setf f (polynom-mul-x^n f ec-codewords))
+                 (setf g (polynom-mul-x^n g (- (length f) (length g))))
+        with remainder
+        for lead-coef = (car (last f))
+        do (format t "~a ~a ~a ~%" f g lead-coef)
+           (setf remainder (polynom-mul-scalar g lead-coef))
+           (setf remainder (polynom-add f remainder))
+           (setf f remainder)
+           (setf g (rest g))
+        finally (return remainder)))
 
 (defun gen-generator (n)
   (if (<= n 1)
       (list 1 1)
       (polynom-mul (list (elt +powers-of-2+ (1- n)) 1) (gen-generator (1- n)))))
 
+(defun bits->int (seq)
+  (loop for i from (1- (length seq)) downto 0
+        for bit = (elt seq i)
+        for p = 1 then (* 2 p)
+        sum (* bit p)))
+
+(defun bytes->polynomial (bytes)
+  (reverse (map 'list #'bits->int bytes)))
