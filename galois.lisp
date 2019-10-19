@@ -1,5 +1,7 @@
 ;;;; Galois field GF(256) arithmetic.
 
+(in-package :mare5x.lispqr.galois)
+
 (defconstant +MOD-CONST+ #b100011101)
 
 (defmacro generate-powers-of-2 (&optional (n 256))
@@ -11,11 +13,6 @@
                  do (if (> prev (1- n))
                         (setf prev (logxor prev +MOD-CONST+)))
                  collect prev)))
-
-(defmacro loop-index-value ((index value) seq &body loop-body)
-  `(loop for ,index from 0 to (1- (length ,seq))
-         for ,value = (elt ,seq ,index)
-         ,@loop-body))
 
 (defconstant +POWERS-OF-2+ (generate-powers-of-2))
 
@@ -89,7 +86,7 @@
                  (setf g (polynom-mul-x^n g (- (length f) (length g))))
         with remainder
         for lead-coef = (car (last f))
-        do (format t "~a ~a ~a ~%" f g lead-coef)
+        do ; (format t "~a ~a ~a ~%" f g lead-coef)
            (setf remainder (polynom-mul-scalar g lead-coef))
            (setf remainder (polynom-add f remainder))
            (setf f remainder)
@@ -101,11 +98,15 @@
       (list 1 1)
       (polynom-mul (list (elt +powers-of-2+ (1- n)) 1) (gen-generator (1- n)))))
 
-(defun bits->int (seq)
-  (loop for i from (1- (length seq)) downto 0
-        for bit = (elt seq i)
-        for p = 1 then (* 2 p)
-        sum (* bit p)))
-
 (defun bytes->polynomial (bytes)
-  (reverse (map 'list #'bits->int bytes)))
+  (reverse (map 'list #'binary->decimal bytes)))
+
+(defun generate-ec-codewords (data-bytes ec-codewords)
+  "Generate error correction codewords for the given data.
+   Returns a list of 8-bit error correction codewords."
+  (map 'list #'decimal->8-bit
+       (reverse (ec-polynom-div
+                 (bytes->polynomial data-bytes)
+                 (gen-generator ec-codewords)
+                 ec-codewords))))
+
