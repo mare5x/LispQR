@@ -143,6 +143,26 @@
                  do (if (not (is-marked-submatrix marked pattern-dim pos))
                         (fill&mark-submatrix matrix marked +alignment-pattern+ pos)))))
 
+(defun add-timing-patterns (matrix marked)
+  ;; The horizontal starts at the fixed 6th row.
+  ;; The vertical starts at the fixed 6th col.
+  (let ((size (array-dimension matrix 0)))
+    (loop for col from 0 below size
+          with row = 6
+          for color-bit = (mod (1+ col) 2)
+          for marked-bit = (aref marked row col)
+          do (when (= 0 marked-bit)
+               (setf (aref matrix row col) color-bit)
+               (setf (aref marked row col) 1)))
+    (loop for row from 0 below size
+          with col = 6
+          for color-bit = (mod (1+ row) 2)
+          for marked-bit = (aref marked row col)
+          do (when (= 0 marked-bit)
+               (setf (aref matrix row col) color-bit)
+               (setf (aref marked row col) 1))))
+  matrix)
+
 (defun make-qr-matrix (version)
   ;; Use 'matrix' to place modules.
   ;; Use 'marked' to mark which places in matrix have already been assigned.
@@ -151,6 +171,9 @@
     (add-finder-patterns matrix marked)
     (print-2d-array marked)
     (add-alignment-patterns matrix marked version)
+    (format t "~%")
+    (print-2d-array marked)
+    (add-timing-patterns matrix marked)
     (format t "~%")
     (print-2d-array marked)
     
