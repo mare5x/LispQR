@@ -5,9 +5,10 @@
   (:export
    :loop-index-value
    :get-elt
+   :floor-div
    :clamp
    :swap
-   :print-2d
+   :print-2d-array
    :splice-list
    :split-list
    :decimal->binary
@@ -25,9 +26,15 @@
    :loop-index-value)
   (:export :generate-ec-codewords))
 
+(defpackage :mare5x.lispqr.matrix
+  (:use :common-lisp
+        :mare5x.lispqr.utils)
+  )
+
 (defpackage :mare5x.lispqr.encode
   (:use
    :common-lisp
    :mare5x.lispqr.utils
-   :mare5x.lispqr.galois))
+   :mare5x.lispqr.galois
+   :mare5x.lispqr.matrix))
 

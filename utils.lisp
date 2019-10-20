@@ -4,7 +4,7 @@
 
 
 (defmacro loop-index-value ((index value) seq &body loop-body)
-  `(loop for ,index from 0 to (1- (length ,seq))
+  `(loop for ,index from 0 below (length ,seq)
          for ,value = (elt ,seq ,index)
          ,@loop-body))
 
@@ -23,15 +23,21 @@
 (defun clamp (val low high)
   (max low (min val high)))
 
+(defun floor-div (a b)
+  (floor (/ a b)))
+
 (defun create-hash-table (plist)
   (let ((ht (make-hash-table :size (/ (length plist) 2))))
     (loop for (key value) on plist by #'cddr
           do (setf (gethash key ht) value))
     ht))
 
-(defun print-2d (arr)
-  (dolist (row arr)
-    (format t "~{~a~^~}~%" row)))
+(defun print-2d-array (array)
+  (destructuring-bind (n m) (array-dimensions array)
+    (loop for row from 0 below n do
+          (loop for col from 0 below m
+                do (format t "~a " (aref array row col)))
+          (format t "~%"))))
 
 (defmacro swap (seq i j)
   `(rotatef (elt ,seq ,i) (elt ,seq ,j)))

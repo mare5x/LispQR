@@ -227,21 +227,6 @@
             (b (elt pair 1)))
         (decimal->n-bit (+ b (* 45 a)) 11))))
 
-(defun version-size (version)
-  (+ 21 (* 4 (1- version))))
-
-
-(defun finder-pattern ()
-  "Returns a 2-d array representing a 7x7 finder pattern."
-
-  (list (list 1 1 1 1 1 1 1)
-        (list 1 0 0 0 0 0 1)
-        (list 1 0 1 1 1 0 1)
-        (list 1 0 1 1 1 0 1)
-        (list 1 0 1 1 1 0 1)
-        (list 1 0 0 0 0 0 1)
-        (list 1 1 1 1 1 1 1)))
-
 (defun bits->codewords (bits version ec-level)
   "Transforms a sequence of bits in 
    (mode-indicator, character-count-indicator, encoded-data, terminator)

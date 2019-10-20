@@ -6,5 +6,6 @@
 (load-file "packages.lisp")
 (load-file "utils.lisp")
 (load-file "galois.lisp")
+(load-file "matrix.lisp")
 (load-file "encode.lisp")
 
