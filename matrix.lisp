@@ -6,6 +6,7 @@
 ;;; and a value of 0 a white module.
 ;;; Indexing:
 ;;; Top left is (0, 0), bottom right is (M-1, M-1).
+;;; NOTE: the standard calls the QR matrix the 'QR Code symbol'.
 
 (in-package :mare5x.lispqr.matrix)
 
@@ -163,7 +164,84 @@
                (setf (aref marked row col) 1))))
   matrix)
 
-(defun make-qr-matrix (version)
+(defun add-dark-module (matrix marked version)
+  ;; Next to bottom left finder, using a direct formula.
+  (let ((row (+ 9 (* 4 version)))
+        (col 8))
+    (setf (aref matrix row col) 1)
+    (setf (aref marked row col) 1))
+  matrix)
+
+(defun reserve-format-information (marked)
+  (let ((size (array-dimension marked 0))
+        (pattern-size (array-dimension +finder-pattern+ 0)))
+    ;; Top left:
+    (mark-submatrix marked `(1 ,(+ 2 pattern-size)) `(,(1+ pattern-size) 0))
+    (mark-submatrix marked `(,(+ 2 pattern-size) 1) `(0 ,(1+ pattern-size)))
+    ;; Top right:
+    (mark-submatrix marked `(1 ,(1+ pattern-size)) `(,(1+ pattern-size) ,(- size pattern-size 1)))
+    ;; Bottom left:
+    (mark-submatrix marked `(,pattern-size 1) `(,(- size pattern-size) ,(1+ pattern-size))))
+  marked)
+
+(defun reserve-version-information (marked version)
+  (if (< version 7)
+      (return-from reserve-version-information marked))
+  
+  (let ((size (array-dimension marked 0))
+        (pattern-size (array-dimension +finder-pattern+ 0)))
+    ;; Top right (6x3):
+    (mark-submatrix marked '(6 3) `(0 ,(- size pattern-size 4)))
+    ;; Bottom left (3x6):
+    (mark-submatrix marked '(3 6) `(,(- size pattern-size 4) 0)))
+  marked)
+
+(defun add-data-bits (matrix marked data)
+  ;; 'data' is a bit vector (a stream of bits).
+  (loop named outer
+        with n = (array-dimension matrix 0)
+        with vertical-timing-col = (1- (array-dimension +finder-pattern+ 0))
+        with col = (1- n)
+        with bit-ctr = 0
+        with data-size = (length data)
+        while (< bit-ctr data-size)
+        do
+        ;; Zig-zag upwards.
+        (loop for row from (1- n) downto 0 do
+              (loop for dx in '(0 -1)
+                    for cur-col = (+ col dx)
+                    for marked-bit = (aref marked row cur-col)
+                    do (when (= 0 marked-bit)  ; skip marked bits
+                         (setf (aref marked row cur-col) 1)
+                         (setf (aref matrix row cur-col) (elt data bit-ctr))
+                         (incf bit-ctr)))
+              (if (>= bit-ctr data-size)
+                  (return-from outer)))
+
+        ;; Move to next column.
+        (decf col 2)
+        (if (<= 0 (- col vertical-timing-col) 1)  ; Exception: vertical timing pattern.
+            (decf col))  
+        
+        ;; Zig-zag downwards.
+        (loop for row from 0 below n do
+              (loop for dx in '(0 -1)
+                    for cur-col = (+ col dx)
+                    for marked-bit = (aref marked row cur-col)
+                    do (when (= 0 marked-bit)  ; skip marked bits
+                         (setf (aref marked row cur-col) 1)
+                         (setf (aref matrix row cur-col) (elt data bit-ctr))
+                         (incf bit-ctr)))
+              (if (>= bit-ctr data-size)
+                  (return-from outer)))
+        
+        ;; Move to next column.
+        (decf col 2)
+        (if (<= 0 (- col vertical-timing-col) 1)  ; Exception: vertical timing pattern.
+            (decf col)))
+  matrix)
+
+(defun make-qr-matrix (data version)
   ;; Use 'matrix' to place modules.
   ;; Use 'marked' to mark which places in matrix have already been assigned.
   (let ((matrix (init-matrix (version-size version)))
@@ -176,5 +254,24 @@
     (add-timing-patterns matrix marked)
     (format t "~%")
     (print-2d-array marked)
+    (add-dark-module matrix marked version)
+    (format t "~%")
+    (print-2d-array marked)
+    
+    ;; Only reserve the required regions, without actually
+    ;; placing any modules. The regions will be filled in later.
+    ;; This is necessary so that the data placing step can be performed.
+    (reserve-format-information marked)
+    (format t "~%")
+    (print-2d-array marked)
+    (reserve-version-information marked version)
+    (format t "~%")
+    (print-2d-array marked)
+
+    (add-data-bits matrix marked data)
+    (format t "~%")
+    (print-2d-array marked)
+    (format t "~%")
+    (print-2d-array matrix)
     
     matrix))

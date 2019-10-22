@@ -378,5 +378,5 @@
 
     (format t "result: ~a~%" result)
 
-    result
-    ))
+    ;; Return a bit-stream (single bit-vector).
+    (apply #'concatenate 'bit-vector result)))
