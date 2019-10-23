@@ -28,7 +28,8 @@
 
 (defpackage :mare5x.lispqr.matrix
   (:use :common-lisp
-        :mare5x.lispqr.utils)
+   :mare5x.lispqr.utils)
+  (:export :loop-submatrix)
   )
 
 (defpackage :mare5x.lispqr.encode
@@ -38,3 +39,7 @@
    :mare5x.lispqr.galois
    :mare5x.lispqr.matrix))
 
+(defpackage :mare5x.lispqr.image
+  (:use :common-lisp :zpng :mare5x.lispqr.utils)
+  (:import-from :mare5x.lispqr.matrix :loop-submatrix)
+  )

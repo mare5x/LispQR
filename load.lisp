@@ -8,4 +8,5 @@
 (load-file "galois.lisp")
 (load-file "matrix.lisp")
 (load-file "encode.lisp")
+(load-file "image.lisp")
 
