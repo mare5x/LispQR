@@ -105,19 +105,53 @@
 (defun is-marked-submatrix (matrix sub-dimensions &optional (position '(0 0)))
   "Check if there are any 1s at the given sub-dimensions at position in matrix."
   (loop-submatrix ((row col) nil) (sub-dimensions position)
-                  (if (= 1 (aref matrix row col))
-                      (return-from is-marked-submatrix t)))
+    (if (= 1 (aref matrix row col))
+        (return-from is-marked-submatrix t)))
   nil)
+
+(defun is-fully-marked-submatrix (matrix sub-dimensions position &optional (value 1))
+  "Check if all values in sub-matrix are of the given value."
+  (loop-submatrix ((row col) nil) (sub-dimensions position)
+    (if (/= value (aref matrix row col))
+        (return-from is-fully-marked-submatrix nil)))
+  t)
+
+(defun match-submatrix (matrix sub-matrix position)
+  (loop-submatrix ((row col) (sub-row sub-col)) ((array-dimensions sub-matrix) position)
+    (if (out-of-bounds (array-dimensions matrix) row col)
+        (return-from match-submatrix))
+    (if (/= (aref matrix row col)
+            (aref sub-matrix sub-row sub-col))
+        (return-from match-submatrix)))
+  t)
+
+(defun out-of-bounds (dimensions row col)
+  (destructuring-bind (rows cols) dimensions
+    (or (< row 0)
+        (< col 0)
+        (>= row rows)
+        (>= col cols))))
+
+(defun matrix-size (matrix)
+  (array-dimension matrix 0))
 
 (defun version-size (version)
   "Returns the size of the QR code (in modules)."
   (+ 21 (* 4 (1- version))))
 
-(defun init-matrix (size)
-  (make-array (list size size) :element-type 'bit))
+(defun init-matrix (size &key (initial-element 0))
+  (make-array (list size size) :element-type 'bit :initial-element initial-element))
+
+(defun copy-matrix (matrix)
+  (let* ((size (matrix-size matrix))
+         (new-matrix (init-matrix size)))
+    (dotimes (i (array-total-size matrix))
+      (setf (row-major-aref new-matrix i)
+            (row-major-aref matrix i)))
+    new-matrix))
 
 (defun add-finder-patterns (matrix marked)
-  (let ((n (array-dimension matrix 0))
+  (let ((n (matrix-size matrix))
         (pattern-size (array-dimension +finder-pattern+ 0)))
     ;; In addition to the finder patterns, also mark the separators.
     ;; The separators don't have to be filled in, since they are 0s.
@@ -147,7 +181,7 @@
 (defun add-timing-patterns (matrix marked)
   ;; The horizontal starts at the fixed 6th row.
   ;; The vertical starts at the fixed 6th col.
-  (let ((size (array-dimension matrix 0)))
+  (let ((size (matrix-size matrix)))
     (loop for col from 0 below size
           with row = 6
           for color-bit = (mod (1+ col) 2)
@@ -173,7 +207,7 @@
   matrix)
 
 (defun reserve-format-information (marked)
-  (let ((size (array-dimension marked 0))
+  (let ((size (matrix-size marked))
         (pattern-size (array-dimension +finder-pattern+ 0)))
     ;; Top left:
     (mark-submatrix marked `(1 ,(+ 2 pattern-size)) `(,(1+ pattern-size) 0))
@@ -188,7 +222,7 @@
   (if (< version 7)
       (return-from reserve-version-information marked))
   
-  (let ((size (array-dimension marked 0))
+  (let ((size (matrix-size marked))
         (pattern-size (array-dimension +finder-pattern+ 0)))
     ;; Top right (6x3):
     (mark-submatrix marked '(6 3) `(0 ,(- size pattern-size 4)))
@@ -199,7 +233,7 @@
 (defun add-data-bits (matrix marked data)
   ;; 'data' is a bit vector (a stream of bits).
   (loop named outer
-        with n = (array-dimension matrix 0)
+        with n = (matrix-size matrix)
         with vertical-timing-col = (1- (array-dimension +finder-pattern+ 0))
         with col = (1- n)
         with bit-ctr = 0
@@ -241,11 +275,170 @@
             (decf col)))
   matrix)
 
+(defun mask-pattern (matrix test-fn)
+  ;; The masking region must only be applied to data and error correction modules.
+  ;; Use test-fn to specify all conditions that should apply for masking to take effect
+  ;; at any given (row col).
+  (let ((masked (copy-matrix matrix))
+        (size (matrix-size matrix)))
+    (loop for row from 0 below size do
+          (loop for col from 0 below size do
+                (if (funcall test-fn row col)
+                    (setf (aref masked row col)
+                          (logxor 1 (aref masked row col))))))
+    masked))
+
+(defun mask-pattern-test-fn (mask-number)
+  (case mask-number
+    (0 #'(lambda (row col) (zerop (mod (+ row col) 2))))
+    (1 #'(lambda (row col) (zerop (mod row 2))))
+    (2 #'(lambda (row col) (zerop (mod col 3))))
+    (3 #'(lambda (row col) (zerop (mod (+ row col) 3))))
+    (4 #'(lambda (row col) (zerop (mod (+ (floor-div row 2)
+                                          (floor-div col 3))
+                                       2))))
+    (5 #'(lambda (row col) (zerop (+ (mod (* row col) 2)
+                                     (mod (* row col) 3)))))
+    (6 #'(lambda (row col) (zerop (mod (+ (mod (* row col) 2)
+                                          (mod (* row col) 3))
+                                       2))))
+    (7 #'(lambda (row col) (zerop (mod (+ (mod (+ row col) 2)
+                                          (mod (* row col) 3))
+                                       2))))))
+
+(defun mask-pattern-region (matrix protected-region mask-number)
+  ;; Wrap each test-fn to also take the protected-region into account.
+  (flet ((test-fn (row col) (and (zerop (aref protected-region row col))
+                                 (funcall (mask-pattern-test-fn mask-number)
+                                          row col))))
+    (mask-pattern matrix #'test-fn)))
+
+(defun eval-mask-penalty-rule-1 (matrix)
+  ;; Rule 1: row & column penalty.
+  (let ((size (matrix-size matrix))
+        (penalty 0))
+    ;; Row penalties.
+    (loop for row below size
+          for consecutive-count = 0
+          for prev-bit = -1
+          do (loop for col below size
+                   for bit = (aref matrix row col)
+                   do (if (= prev-bit bit)
+                          (incf consecutive-count)
+                          (progn (if (>= consecutive-count 5)
+                                     (incf penalty (- consecutive-count 2)))
+                                 (setf consecutive-count 1)))
+                      (setf prev-bit bit)))
+    
+    ;; Column penalties.
+    (loop for col below size
+          for consecutive-count = 0
+          for prev-bit = -1
+          do (loop for row below size
+                   for bit = (aref matrix row col)
+                   do (if (= prev-bit bit)
+                          (incf consecutive-count)
+                          (progn (if (>= consecutive-count 5)
+                                     (incf penalty (- consecutive-count 2)))
+                                 (setf consecutive-count 1)))
+                      (setf prev-bit bit)))
+
+    (format t "Rule1 penalty: ~a~%" penalty)
+    penalty))
+
+(defun eval-mask-penalty-rule-2 (matrix)
+  ;; Block modules in same color.
+  ;; Note: the standard is very ambiguous regarding
+  ;; this section (m x n blocks). I will count each
+  ;; 2 x 2 block instead (as was done by thonky).
+  (let ((size (matrix-size matrix))
+        (penalty 0))
+    (loop for row below (1- size) do
+          (loop for col below (1- size)
+                for bit = (aref matrix row col)
+                do (when (is-fully-marked-submatrix matrix '(2 2) `(,row ,col) bit)
+                     (format t "Found 2x2 pattern at (~a ~a)~%" row col)
+                     (incf penalty 3))))
+    (format t "Rule2 penalty: ~a~%" penalty)
+    penalty))
+
+(defun eval-mask-penalty-rule-3 (matrix)
+  ;; Dark-light patterns.
+  ;; Note: the standard says to look for 1011101,
+  ;; whereas thonky says to look for either 10111010000
+  ;; or 00001011101. The latter way seems more reasonable.
+  (let ((size (matrix-size matrix))
+        (penalty 0))
+    (loop with horizontal-patterns = `(,#2a (#*10111010000) ,#2a (#*00001011101))
+          with vertical-patterns = `(,#2a (#*1 #*0 #*1 #*1 #*1 #*0 #*1 #*0 #*0 #*0 #*0)
+                                          ,#2a (#*0 #*0 #*0 #*0 #*1 #*0 #*1 #*1 #*1 #*0 #*1))
+          for row below size do
+          (loop for col below size do
+                (when (some #'(lambda (pattern) (match-submatrix matrix pattern `(,row ,col)))
+                            horizontal-patterns)
+                  (format t "Found horizontal pattern at (~a ~a)~%" row col)
+                  (incf penalty 40))
+                (when (some #'(lambda (pattern) (match-submatrix matrix pattern `(,row ,col)))
+                            vertical-patterns)
+                  (format t "Found vertical pattern at (~a ~a)~%" row col)
+                  (incf penalty 40))))
+
+    (format t "Rule3 penalty ~a~%" penalty)
+    penalty))
+
+(defun eval-mask-penalty-rule-4 (matrix)
+  ;; Proportion of dark modules.
+  (let* ((size (matrix-size matrix))
+         (total-modules (* size size))
+         (dark-modules 0)
+         (k 0)
+         proportion)
+    (loop for row below size do
+          (loop for col below size
+                for bit = (aref matrix row col)
+                do (if (= bit 1)
+                       (incf dark-modules))))
+    
+    (setf proportion (* 100 (/ dark-modules total-modules)))
+    (setf k (if (<= proportion 50)
+                (- 9 (floor proportion 5))
+                (- (ceiling proportion 5) 11)))
+    (format t "Proportion of dark modules: ~$~%" proportion)
+    (format t "Rule4 penalty ~a~%" (* 10 k))
+    (* 10 k)))
+
+(defun eval-mask-penalty (matrix)
+  (format t "Evaluating penalties ...~%")
+  (print-2d-array matrix)
+  (+ (eval-mask-penalty-rule-1 matrix)
+     (eval-mask-penalty-rule-2 matrix)
+     (eval-mask-penalty-rule-3 matrix)
+     (eval-mask-penalty-rule-4 matrix)))
+
+(defun best-mask-pattern (matrix protected-region)
+  (loop for mask-number below 8
+        with min-penalty = most-positive-fixnum
+        with min-matrix = nil
+        with best-mask = 0
+
+        for masked = (mask-pattern-region matrix protected-region mask-number)
+        for penalty = (eval-mask-penalty masked)
+
+        do (when (< penalty min-penalty)
+             (setf min-penalty penalty)
+             (setf min-matrix masked)
+             (setf best-mask mask-number))
+
+        finally (format t "Lowest penalty (~a) using pattern ~a~%" min-penalty best-mask)
+                (print-2d-array min-matrix)
+                (return min-matrix)))
+
 (defun make-qr-matrix (data version)
   ;; Use 'matrix' to place modules.
   ;; Use 'marked' to mark which places in matrix have already been assigned.
   (let ((matrix (init-matrix (version-size version)))
-        (marked (init-matrix (version-size version))))
+        (marked (init-matrix (version-size version)))
+        (mask-protected-region nil))
     (add-finder-patterns matrix marked)
     (print-2d-array marked)
     (add-alignment-patterns matrix marked version)
@@ -268,10 +461,26 @@
     (format t "~%")
     (print-2d-array marked)
 
+    ;; At this point 'marked' has marked everything that should NOT be
+    ;; masked. Therefore we can simply use 'marked' when masking ...
+    (setf mask-protected-region (copy-matrix marked))
+
     (add-data-bits matrix marked data)
     (format t "~%")
     (print-2d-array marked)
     (format t "~%")
     (print-2d-array matrix)
-    
+
+    ;; Note: ISO/IEC 18004:2000 is clear that masking should be done
+    ;; on the encoding region of the symbol excluding the Format Information.
+    ;; And the penalty evaluation area is the complete symbol. However,
+    ;; https://www.nayuki.io/page/creating-a-qr-code-step-by-step draws
+    ;; the format bits BEFORE evaluating the penalty. I will trust in the
+    ;; standard and thonky.com. However, this doesn't make much sense ...
+    (setf matrix (best-mask-pattern matrix mask-protected-region))
+    (format t "~%")
+    (print-2d-array marked)
+    (format t "~%")
+    (print-2d-array matrix)
+
     matrix))

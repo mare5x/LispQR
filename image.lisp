@@ -2,7 +2,7 @@
 
 (in-package :mare5x.lispqr.image)
 
-(defun write-qr-matrix (file-path matrix &key (module-size-px 4))
+(defun write-qr-matrix (file-path matrix &key (module-size-px 8))
   ;; 'matrix' is a 2-d array of bit values.
   ;; Bit 1 -> black;
   ;; Bit 0 -> white;
@@ -28,4 +28,16 @@
                ;; Repeat each row multiple times, to fill the whole module-size-px:
                (loop repeat module-size-px do (write-row row-data png)))
       (finish-png png))))
+
+
+(defun write-mask-patterns (version &key (directory "./"))
+  (let ((matrix (init-matrix (version-size version))))
+    (loop for i from 0 below 8 
+          for pattern = (mask-pattern matrix (mask-pattern-test-fn i))
+          for path = (merge-pathnames directory
+                                      (make-pathname :name (string+ "mask-pattern-" (write-to-string i))
+                                                     :type "png"))
+          do (write-qr-matrix path pattern))))
+
+
 

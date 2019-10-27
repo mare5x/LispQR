@@ -3,6 +3,8 @@
 (defmacro load-file (relative)
   `(load (concatenate 'string ,*src-dir* ,relative)))
 
+(asdf:oos 'asdf:load-op :zpng)
+
 (load-file "packages.lisp")
 (load-file "utils.lisp")
 (load-file "galois.lisp")

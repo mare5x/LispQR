@@ -16,7 +16,8 @@
    :shift-array
    :decimal->n-bit
    :decimal->8-bit
-   :with-remainder))
+   :with-remainder
+   :string+))
 
 (defpackage :mare5x.lispqr.galois
   (:use :common-lisp)
@@ -29,8 +30,14 @@
 (defpackage :mare5x.lispqr.matrix
   (:use :common-lisp
    :mare5x.lispqr.utils)
-  (:export :loop-submatrix)
-  )
+  (:export
+   :loop-submatrix
+   :version-size
+   :init-matrix
+   :copy-matrix
+   :mask-pattern
+   :mask-pattern-test-fn
+   :make-qr-matrix))
 
 (defpackage :mare5x.lispqr.encode
   (:use
@@ -40,6 +47,8 @@
    :mare5x.lispqr.matrix))
 
 (defpackage :mare5x.lispqr.image
-  (:use :common-lisp :zpng :mare5x.lispqr.utils)
-  (:import-from :mare5x.lispqr.matrix :loop-submatrix)
-  )
+  (:use
+   :common-lisp
+   :zpng
+   :mare5x.lispqr.utils
+   :mare5x.lispqr.matrix))

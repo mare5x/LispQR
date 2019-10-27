@@ -95,4 +95,7 @@
   `(let ((,var (mod ,n ,divisor)))
      ,@body))
 
+(defun string+ (&rest strings)
+  (apply #'concatenate 'string strings))
+
 
