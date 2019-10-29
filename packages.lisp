@@ -21,7 +21,8 @@
    :list-lpad
    :list-rpad
    :list-ltrim
-   :list-xor))
+   :list-xor
+   :sequence->list))
 
 (defpackage :mare5x.lispqr.galois
   (:use :common-lisp)

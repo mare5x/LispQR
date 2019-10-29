@@ -111,3 +111,6 @@
 (defun list-xor (list &rest rest)
   (apply #'mapcar #'logxor list rest))
 
+(defun sequence->list (seq)
+  (map 'list #'identity seq))
+

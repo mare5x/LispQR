@@ -92,6 +92,22 @@
                       for ,col = (+ ,x ,sub-col)
                       do ,@do-body)))))
 
+(defmacro loop-submatrix-by-column (((row col) (sub-row sub-col))
+                                    (sub-dimensions position)
+                                    &body do-body)
+
+  
+  (let ((sn (gensym))
+        (sm (gensym))
+        (y (gensym))
+        (x (gensym)))
+   `(destructuring-bind ((,sn ,sm) (,y ,x)) `(,,sub-dimensions ,,position) 
+      (loop for ,sub-col below ,sm
+            for ,col = (+ ,x ,sub-col)
+            do (loop for ,sub-row below ,sn
+                     for ,row = (+ ,y ,sub-row)
+                     do ,@do-body)))))
+
 (defun fill-submatrix (matrix sub-matrix &optional (position '(0 0)))
   "Place sub-matrix into matrix at position."
   (loop-submatrix ((row col) (sub-row sub-col)) ((array-dimensions sub-matrix) position)
@@ -445,7 +461,7 @@
                                    (getf +ec-bits+ ec-level)
                                    (decimal->n-bit mask-pattern 3)))
          (ec-bits (copy-list format-bits))
-         (generator (list 1 0 1 0 0 1 1 0 1 1 1))
+         (generator '(1 0 1 0 0 1 1 0 1 1 1))
          result)
     
     (setf ec-bits (list-rpad ec-bits 10 0))
@@ -454,19 +470,37 @@
       with generator-len = (length generator)
       for len = (length ec-bits)
       while (> len 10) do
-      (setf ec-bits
-            (list-ltrim (list-xor ec-bits
-                                  (list-rpad generator
-                                             (- len generator-len)
-                                             0))
-                        0)))
+      (setf ec-bits (list-ltrim (list-xor ec-bits
+                                          (list-rpad generator
+                                                     (- len generator-len)
+                                                     0))
+                                0)))
     (if (< (length ec-bits) 10)
         (setf ec-bits (list-lpad ec-bits (- 10 (length ec-bits)) 0)))
     
     (setf result (concatenate 'bit-vector format-bits ec-bits))
     (bit-xor result #*101010000010010 t)))
 
-(defun place-format-bits (matrix bits)
+(defun generate-version-bits (version)
+  (let* ((version-bits (sequence->list (decimal->n-bit version 6)))
+         (ec-bits (copy-list version-bits))
+         (generator '(1 1 1 1 1 0 0 1 0 0 1 0 1)))
+    (loop
+      initially (setf ec-bits (list-ltrim (list-rpad ec-bits 12 0) 0))
+      with generator-len = (length generator)
+      for len = (length ec-bits)
+      while (> len 12) do
+      (setf ec-bits (list-ltrim (list-xor ec-bits
+                                          (list-rpad generator
+                                                     (- len generator-len)
+                                                     0))
+                                0)))
+    (if (< (length ec-bits) 12)
+        (setf ec-bits (list-lpad ec-bits (- 12 (length ec-bits)) 0)))
+
+    (concatenate 'bit-vector version-bits ec-bits)))
+
+(defun add-format-information-bits (matrix bits)
   (let ((size (matrix-size matrix))
         (pattern-size (array-dimension +finder-pattern+ 0))
         (bit-idx 0))
@@ -493,6 +527,28 @@
     (loop-submatrix ((row col) (sub-row sub-col)) ('(1 8) `(,(1+ pattern-size) ,(- size pattern-size 1)))
       (setf (aref matrix row col) (bit bits (+ bit-idx sub-col))))
 
+    matrix))
+
+(defun add-version-information-bits (matrix version)
+  (if (< version 7)
+      matrix)
+
+  (let ((size (matrix-size matrix))
+        (pattern-size (array-dimension +finder-pattern+ 0))
+        (bits (generate-version-bits version))
+        (bit-idx 0))
+    (setf bits (reverse bits))
+
+    ;; Bottom-left
+    (loop-submatrix-by-column ((row col) (sub-row sub-col)) ('(3 6) `(,(- size pattern-size 4) 0))
+      (setf (aref matrix row col) (bit bits bit-idx))
+      (incf bit-idx))
+
+    ;; Top-right
+    (setf bit-idx 0)
+    (loop-submatrix ((row col) (sub-row sub-col)) ('(6 3) `(0 ,(- size pattern-size 4)))
+      (setf (aref matrix row col) (bit bits bit-idx))
+      (incf bit-idx))
     matrix))
 
 (defun make-qr-matrix (data version ec-level)
@@ -542,10 +598,16 @@
     ;; standard and thonky.com. However, this doesn't make much sense ...
     ;; Actually, thonky says not to draw the format bits, however his
     ;; examples contain the format bits ...
+    ;; The standard states that the last step (step 7) is to generate
+    ;; format and version information ...
     (setf (values matrix mask-number) (best-mask-pattern matrix mask-protected-region))
 
-    (place-format-bits matrix
+    (add-format-information-bits matrix
                        (generate-format-bits ec-level mask-number))
+    (print-2d-array matrix)
+
+    (add-version-information-bits matrix version)
+    (format t "FINAL OUTPUT: ~%")
     (print-2d-array matrix)
     
     matrix))
