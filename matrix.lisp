@@ -71,6 +71,12 @@
        #*10001
        #*11111))
 
+(defconstant +ec-bits+
+  '(:L #*01
+    :M #*00
+    :Q #*11
+    :H #*10))
+
 (defmacro loop-submatrix (((row col) (&optional (sub-row (gensym)) (sub-col (gensym))))
                           (sub-dimensions &optional (position '(0 0)))
                           &body do-body)
@@ -416,6 +422,7 @@
      (eval-mask-penalty-rule-4 matrix)))
 
 (defun best-mask-pattern (matrix protected-region)
+  "Returns 2 values: the masked matrix and the mask used."
   (loop for mask-number below 8
         with min-penalty = most-positive-fixnum
         with min-matrix = nil
@@ -431,14 +438,70 @@
 
         finally (format t "Lowest penalty (~a) using pattern ~a~%" min-penalty best-mask)
                 (print-2d-array min-matrix)
-                (return min-matrix)))
+                (return (values min-matrix best-mask))))
 
-(defun make-qr-matrix (data version)
+(defun generate-format-bits (ec-level mask-pattern)
+  (let* ((format-bits (concatenate 'list  ; work with a list because we will need to add/remove from both sides
+                                   (getf +ec-bits+ ec-level)
+                                   (decimal->n-bit mask-pattern 3)))
+         (ec-bits (copy-list format-bits))
+         (generator (list 1 0 1 0 0 1 1 0 1 1 1))
+         result)
+    
+    (setf ec-bits (list-rpad ec-bits 10 0))
+    (setf ec-bits (list-ltrim ec-bits 0))
+    (loop
+      with generator-len = (length generator)
+      for len = (length ec-bits)
+      while (> len 10) do
+      (setf ec-bits
+            (list-ltrim (list-xor ec-bits
+                                  (list-rpad generator
+                                             (- len generator-len)
+                                             0))
+                        0)))
+    (if (< (length ec-bits) 10)
+        (setf ec-bits (list-lpad ec-bits (- 10 (length ec-bits)) 0)))
+    
+    (setf result (concatenate 'bit-vector format-bits ec-bits))
+    (bit-xor result #*101010000010010 t)))
+
+(defun place-format-bits (matrix bits)
+  (let ((size (matrix-size matrix))
+        (pattern-size (array-dimension +finder-pattern+ 0))
+        (bit-idx 0))
+    ;; Top-left
+    (loop-submatrix ((row col) (sub-row sub-col)) ('(1 6) `(,(1+ pattern-size) 0))
+      (setf (aref matrix row col) (bit bits sub-col)))
+    (incf bit-idx 6)
+    (loop-submatrix ((row col) (sub-row sub-col)) ('(1 2) `(,(1+ pattern-size) ,pattern-size))
+      (setf (aref matrix row col) (bit bits (+ sub-col bit-idx))))
+    (incf bit-idx 2)
+    (setf (aref matrix pattern-size (1+ pattern-size))
+          (bit bits bit-idx))
+    (incf bit-idx 1)
+    (loop-submatrix ((row col) (sub-row sub-col)) ('(6 1) `(0 ,(1+ pattern-size)))
+      (setf (aref matrix (- 5 row) col) (bit bits bit-idx))
+      (incf bit-idx))
+
+    ;; Bottom-right
+    (setf bit-idx 0)
+    (loop-submatrix ((row col) (sub-row sub-col)) ('(7 1) `(,(- size pattern-size) ,(1+ pattern-size)))
+      (setf (aref matrix (- size sub-row 1) col) (bit bits (+ bit-idx sub-row))))
+    (incf bit-idx 7)
+    ;; Top-left
+    (loop-submatrix ((row col) (sub-row sub-col)) ('(1 8) `(,(1+ pattern-size) ,(- size pattern-size 1)))
+      (setf (aref matrix row col) (bit bits (+ bit-idx sub-col))))
+
+    matrix))
+
+(defun make-qr-matrix (data version ec-level)
   ;; Use 'matrix' to place modules.
   ;; Use 'marked' to mark which places in matrix have already been assigned.
   (let ((matrix (init-matrix (version-size version)))
         (marked (init-matrix (version-size version)))
-        (mask-protected-region nil))
+        (mask-protected-region nil)
+        (mask-number 0))
     (add-finder-patterns matrix marked)
     (print-2d-array marked)
     (add-alignment-patterns matrix marked version)
@@ -477,10 +540,12 @@
     ;; https://www.nayuki.io/page/creating-a-qr-code-step-by-step draws
     ;; the format bits BEFORE evaluating the penalty. I will trust in the
     ;; standard and thonky.com. However, this doesn't make much sense ...
-    (setf matrix (best-mask-pattern matrix mask-protected-region))
-    (format t "~%")
-    (print-2d-array marked)
-    (format t "~%")
-    (print-2d-array matrix)
+    ;; Actually, thonky says not to draw the format bits, however his
+    ;; examples contain the format bits ...
+    (setf (values matrix mask-number) (best-mask-pattern matrix mask-protected-region))
 
+    (place-format-bits matrix
+                       (generate-format-bits ec-level mask-number))
+    (print-2d-array matrix)
+    
     matrix))

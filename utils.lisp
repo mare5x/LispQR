@@ -98,4 +98,16 @@
 (defun string+ (&rest strings)
   (apply #'concatenate 'string strings))
 
+(defun list-lpad (list n val)
+  (append (make-list n :initial-element val) list))
+
+(defun list-rpad (list n val)
+  (append list (make-list n :initial-element val)))
+
+(defun list-ltrim (list val)
+  (loop while (eql (car list) val) do (pop list))
+  list)
+
+(defun list-xor (list &rest rest)
+  (apply #'mapcar #'logxor list rest))
 

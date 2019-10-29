@@ -17,7 +17,11 @@
    :decimal->n-bit
    :decimal->8-bit
    :with-remainder
-   :string+))
+   :string+
+   :list-lpad
+   :list-rpad
+   :list-ltrim
+   :list-xor))
 
 (defpackage :mare5x.lispqr.galois
   (:use :common-lisp)
