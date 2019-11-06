@@ -10,6 +10,9 @@
 
 (in-package :mare5x.lispqr.matrix)
 
+(defparameter *draw-debug* nil)
+(defparameter *draw-debug-path* "./")
+
 ;; These are the row/column coordinates of the center module
 ;; of each alignment pattern. For each version there is a list.
 (defconstant +alignment-pattern-locations+
@@ -76,6 +79,11 @@
     :M #*00
     :Q #*11
     :H #*10))
+
+(defun draw-debug-matrix (matrix info-str)
+  (if *draw-debug*
+      (write-qr-matrix (merge-pathnames *draw-debug-path* (format nil "debug-~a.png" info-str))
+                       matrix)))
 
 (defmacro loop-submatrix (((row col) (&optional (sub-row (gensym)) (sub-col (gensym))))
                           (sub-dimensions &optional (position '(0 0)))
@@ -437,8 +445,13 @@
      (eval-mask-penalty-rule-3 matrix)
      (eval-mask-penalty-rule-4 matrix)))
 
-(defun best-mask-pattern (matrix protected-region)
+(defun best-mask-pattern (matrix protected-region &optional (force-mask-number -1))
   "Returns 2 values: the masked matrix and the mask used."
+  (if (>= force-mask-number 0)
+      (return-from best-mask-pattern (values
+                                      (mask-pattern-region matrix protected-region force-mask-number)
+                                      force-mask-number)))
+  
   (loop for mask-number below 8
         with min-penalty = most-positive-fixnum
         with min-matrix = nil
@@ -451,9 +464,9 @@
              (setf min-penalty penalty)
              (setf min-matrix masked)
              (setf best-mask mask-number))
+           (draw-debug-matrix matrix (format nil "mask-~d" mask-number))
 
         finally (format t "Lowest penalty (~a) using pattern ~a~%" min-penalty best-mask)
-                (print-2d-array min-matrix)
                 (return (values min-matrix best-mask))))
 
 (defun generate-format-bits (ec-level mask-pattern)
@@ -504,6 +517,8 @@
   (let ((size (matrix-size matrix))
         (pattern-size (array-dimension +finder-pattern+ 0))
         (bit-idx 0))
+    (format t "Format information bits: ~a~%" bits)
+    
     ;; Top-left
     (loop-submatrix ((row col) (sub-row sub-col)) ('(1 6) `(,(1+ pattern-size) 0))
       (setf (aref matrix row col) (bit bits sub-col)))
@@ -531,7 +546,7 @@
 
 (defun add-version-information-bits (matrix version)
   (if (< version 7)
-      matrix)
+      (return-from add-version-information-bits matrix))
 
   (let ((size (matrix-size matrix))
         (pattern-size (array-dimension +finder-pattern+ 0))
@@ -551,44 +566,31 @@
       (incf bit-idx))
     matrix))
 
-(defun make-qr-matrix (data version ec-level)
+(defun make-qr-matrix (data version ec-level &optional (mask-number -1))
   ;; Use 'matrix' to place modules.
   ;; Use 'marked' to mark which places in matrix have already been assigned.
   (let ((matrix (init-matrix (version-size version)))
         (marked (init-matrix (version-size version)))
-        (mask-protected-region nil)
-        (mask-number 0))
+        (mask-protected-region nil))
     (add-finder-patterns matrix marked)
-    (print-2d-array marked)
     (add-alignment-patterns matrix marked version)
-    (format t "~%")
-    (print-2d-array marked)
     (add-timing-patterns matrix marked)
-    (format t "~%")
-    (print-2d-array marked)
     (add-dark-module matrix marked version)
-    (format t "~%")
-    (print-2d-array marked)
+    (draw-debug-matrix matrix "function-patterns")
     
     ;; Only reserve the required regions, without actually
     ;; placing any modules. The regions will be filled in later.
     ;; This is necessary so that the data placing step can be performed.
     (reserve-format-information marked)
-    (format t "~%")
-    (print-2d-array marked)
     (reserve-version-information marked version)
-    (format t "~%")
-    (print-2d-array marked)
+    (draw-debug-matrix marked "mask-protected-region")
 
     ;; At this point 'marked' has marked everything that should NOT be
     ;; masked. Therefore we can simply use 'marked' when masking ...
     (setf mask-protected-region (copy-matrix marked))
 
     (add-data-bits matrix marked data)
-    (format t "~%")
-    (print-2d-array marked)
-    (format t "~%")
-    (print-2d-array matrix)
+    (draw-debug-matrix matrix "data")
 
     ;; Note: ISO/IEC 18004:2000 is clear that masking should be done
     ;; on the encoding region of the symbol excluding the Format Information.
@@ -600,14 +602,17 @@
     ;; examples contain the format bits ...
     ;; The standard states that the last step (step 7) is to generate
     ;; format and version information ...
-    (setf (values matrix mask-number) (best-mask-pattern matrix mask-protected-region))
+    (setf (values matrix mask-number)
+          (best-mask-pattern matrix mask-protected-region mask-number))
 
+    (draw-debug-matrix matrix (format nil "best-mask-~a" mask-number))
+    
     (add-format-information-bits matrix
                        (generate-format-bits ec-level mask-number))
-    (print-2d-array matrix)
+    
+    (draw-debug-matrix matrix "format-info")
 
     (add-version-information-bits matrix version)
-    (format t "FINAL OUTPUT: ~%")
-    (print-2d-array matrix)
+    (draw-debug-matrix matrix "final")
     
     matrix))
