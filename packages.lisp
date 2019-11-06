@@ -9,6 +9,7 @@
    :clamp
    :swap
    :print-2d-array
+   :print-bits
    :splice-list
    :split-list
    :decimal->binary
@@ -18,6 +19,7 @@
    :decimal->8-bit
    :with-remainder
    :string+
+   :string-split
    :list-lpad
    :list-rpad
    :list-ltrim
@@ -32,9 +34,19 @@
    :loop-index-value)
   (:export :generate-ec-codewords))
 
+(defpackage :mare5x.lispqr.image
+  (:use
+   :common-lisp
+   :zpng
+   :mare5x.lispqr.utils)
+  (:export
+   :write-qr-matrix))
+
 (defpackage :mare5x.lispqr.matrix
   (:use :common-lisp
    :mare5x.lispqr.utils)
+  (:import-from :mare5x.lispqr.image
+                :write-qr-matrix)
   (:export
    :loop-submatrix
    :version-size
@@ -51,9 +63,3 @@
    :mare5x.lispqr.galois
    :mare5x.lispqr.matrix))
 
-(defpackage :mare5x.lispqr.image
-  (:use
-   :common-lisp
-   :zpng
-   :mare5x.lispqr.utils
-   :mare5x.lispqr.matrix))
