@@ -113,7 +113,7 @@
 
                                         ; The character at the i-th index has a value of i.
 (defconstant +alphanumeric-table+
-  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXZY $%*+-./:")
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:")
 
 (defconstant +character-count-indicator-table+
   (make-array '(3 4) :element-type 'integer :initial-contents
@@ -346,7 +346,7 @@
     (setf required-bits (* 8 required-bits))
     (setf total-bits (loop for bits in values
                            sum (length bits)))
-                                        ; The terminator is between 0 and 4 bits of zeros.
+    ;; The terminator is between 0 and 4 bits of zeros.
     (setf terminator-width (clamp (- required-bits total-bits) 0 4))
     (nconc values (list (make-array terminator-width :element-type 'bit :initial-element 0)))
     
@@ -361,8 +361,9 @@
     (setf data-codewords (bits->codewords
                           (encode-alphanumeric str :version version :ec-level ec-level)
                           version ec-level))
-
+    
     (format t "data-codewords: ~a~%" data-codewords)
+    (print-bits data-codewords :hex)
     
     (setf data-blocks
           (data-codewords->blocks data-codewords version ec-level))
@@ -377,6 +378,7 @@
     (setf result (interleave-blocks data-blocks ec-blocks version))
 
     (format t "result: ~a~%" result)
+    (print-bits result :hex)
 
     ;; Return a bit-stream (single bit-vector).
     (apply #'concatenate 'bit-vector result)))
