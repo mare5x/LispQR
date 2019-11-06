@@ -1,4 +1,4 @@
-(defparameter *src-dir* "d:/Mare5/dev/projects/LispQR/")
+(defparameter *src-dir* "d:/Mare5/dev/projects/LispQR/src/")
 
 (defmacro load-file (relative)
   `(load (concatenate 'string ,*src-dir* ,relative)))

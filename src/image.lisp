@@ -16,7 +16,7 @@
                              :width image-size-px
                              :height image-size-px
                              :color-type :grayscale)))
-    (with-open-file (file-stream file-path
+    (with-open-file (file-stream (ensure-directories-exist file-path)
                                  :direction :output
                                  :if-exists :supersede
                                  :if-does-not-exist :create
