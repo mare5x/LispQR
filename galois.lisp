@@ -39,13 +39,16 @@
 ;; Put f into a list like so: (c0 c1 ... cn).
 ;; Note: negative numbers don't exist in this field.
 
-(defun polynom-trim (f)
+(defun polynom-trim (f &optional (count (length f)))
   "Remove excess zero coefficients."
   (let ((j (1- (length f))))
-    (loop while (and (>= j 0) (= 0 (elt f j))) do (decf j))
+    (loop repeat count
+          while (and (>= j 0)
+                     (= 0 (elt f j)))
+          do (decf j))
     (if (>= j 0)
         (subseq f 0 (1+ j))
-        f)))
+        '())))
 
 (defun order (f)
   (1- (length f)))
@@ -72,23 +75,29 @@
 (defun polynom-mul-x^n (f n)
   ;; Simply add n zeros to the front of the polynomial list.
   (concatenate 'list
-               (loop repeat n collect 0)
+               (make-list n :initial-element 0)
                f))
 
 (defun polynom-add (f g)
-  ;; Trim the result in case some coefficients cancel out. 
+  ;; Trim the result in case some coefficients cancel out.
   (polynom-trim (map 'list #'add f g)))
+
+(defun polynom-add-ec (f g)
+  ;; The lead term will cancel out, so remove it.
+  ;; However, do not remove any other leading terms that cancelled out.
+  ;; This ensures that no division steps are skipped.
+  (polynom-trim (map 'list #'add f g) 1))
 
 (defun ec-polynom-div (f g ec-codewords)
   ;; Assume that the leading coefficient of g is 1.
   (loop repeat (length f)
         initially (setf f (polynom-mul-x^n f ec-codewords))
-                 (setf g (polynom-mul-x^n g (- (length f) (length g))))
+                  (setf g (polynom-mul-x^n g (- (length f) (length g))))
         with remainder
         for lead-coef = (car (last f))
-        do ; (format t "~a ~a ~a ~%" f g lead-coef)
+        do ; (format t "~a~% ~a~%  ~a~%" f g lead-coef)
            (setf remainder (polynom-mul-scalar g lead-coef))
-           (setf remainder (polynom-add f remainder))
+           (setf remainder (polynom-add-ec f remainder))
            (setf f remainder)
            (setf g (rest g))
         finally (return remainder)))
