@@ -7,8 +7,8 @@
 
 (load-file "packages.lisp")
 (load-file "utils.lisp")
+(load-file "image.lisp")
 (load-file "galois.lisp")
 (load-file "matrix.lisp")
 (load-file "encode.lisp")
-(load-file "image.lisp")
 

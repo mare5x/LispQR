@@ -32,27 +32,27 @@
           do (setf (gethash key ht) value))
     ht))
 
-(defun print-2d-array (array)
-  (destructuring-bind (n m) (array-dimensions array)
-    (loop for row from 0 below n do
-          (loop for col from 0 below m
-                do (format t "~a " (aref array row col)))
-          (format t "~%"))))
-
-(defun print-bits (bits &optional (type :hex))
-  (if (bit-vector-p bits)
-      (setf bits (split-list (pad-bits bits) 8)))
-  (loop with ftype = nil
-        initially (ecase type
-                    (:hex (setf ftype "~2,'0x"))
-                    (:bin (setf ftype "~8,'0b"))
-                    (:dec (setf ftype "~d")))
-        for string in bits do
-        (format t (string+ ftype " ") (binary->decimal string))
-        finally (format t "~%")))
-
 (defmacro swap (seq i j)
   `(rotatef (elt ,seq ,i) (elt ,seq ,j)))
+
+
+(defun string+ (&rest strings)
+  (apply #'concatenate 'string strings))
+
+(defun string-split (str &optional (delim #\ ))
+  (loop for i = (position-if-not #'(lambda (x) (char= delim x)) str)
+        then (position-if-not #'(lambda (x) (char= delim x)) str :start (1+ j))
+        for j = (and i (position delim str :start (1+ i)))
+        if i collect (subseq str i j)
+        while j))
+
+(defun pad-bits (bits)
+  "(Left) pad a bit vector with 0s into a multiple of 8."
+  (let ((pad (mod (length bits) 8)))
+    (if (zerop pad) (return-from pad-bits (copy-seq bits)))
+    (concatenate 'bit-vector
+                 (make-array (- 8 pad) :element-type 'bit)
+                 bits)))
 
 (defun splice-list (seq)
   ;; ((1 2 3)) -> (1 2 3) 
@@ -65,14 +65,6 @@
           (list seq)
           NIL)
       (append (list (subseq seq 0 n)) (split-list (subseq seq n) n))))
-
-(defun pad-bits (bits)
-  "(Left) pad a bit vector with 0s into a multiple of 8."
-  (let ((pad (mod (length bits) 8)))
-    (if (zerop pad) (return-from pad-bits (copy-seq bits)))
-    (concatenate 'bit-vector
-                 (make-array (- 8 pad) :element-type 'bit)
-                 bits)))
 
 (defun decimal->binary (n)
   (when (<= n 1)
@@ -115,16 +107,6 @@
   `(let ((,var (mod ,n ,divisor)))
      ,@body))
 
-(defun string+ (&rest strings)
-  (apply #'concatenate 'string strings))
-
-(defun string-split (str &optional (delim #\ ))
-  (loop for i = (position-if-not #'(lambda (x) (char= delim x)) str)
-        then (position-if-not #'(lambda (x) (char= delim x)) str :start (1+ j))
-        for j = (and i (position delim str :start (1+ i)))
-        if i collect (subseq str i j)
-        while j))
-
 (defun list-lpad (list n val)
   (append (make-list n :initial-element val) list))
 
@@ -141,4 +123,21 @@
 (defun sequence->list (seq)
   (map 'list #'identity seq))
 
+(defun print-2d-array (array)
+  (destructuring-bind (n m) (array-dimensions array)
+    (loop for row from 0 below n do
+          (loop for col from 0 below m
+                do (format t "~a " (aref array row col)))
+          (format t "~%"))))
 
+(defun print-bits (bits &optional (type :hex))
+  (if (bit-vector-p bits)
+      (setf bits (split-list (pad-bits bits) 8)))
+  (loop with ftype = nil
+        initially (ecase type
+                    (:hex (setf ftype "~2,'0x"))
+                    (:bin (setf ftype "~8,'0b"))
+                    (:dec (setf ftype "~d")))
+        for string in bits do
+        (format t (string+ ftype " ") (binary->decimal string))
+        finally (format t "~%")))

@@ -1,102 +1,131 @@
 (in-package :mare5x.lispqr.encode)
 
 (defclass version-ec-level-characteristics ()
-  ((version :initarg :version)
-   (ec-level :initarg :ec-level)
-   (total-codewords :initarg :total-codewords)
-   (data-codewords :initarg :data-codewords)
-   (ec-codewords :initarg :ec-codewords)
-   (ec-codewords-per-block :initarg :ec-codewords-per-block)
-   (ec-blocks :initarg :ec-blocks) ; List of numbers.
-   (data-codewords-per-block :initarg :data-codewords-per-block)))
+  ((version
+    :initarg :version
+    :accessor version)
+   (ec-level
+    :initarg :ec-level
+    :accessor ec-level)
+   (total-codewords
+    :initarg :total-codewords
+    :accessor total-codewords)
+   (data-codewords
+    :initarg :data-codewords
+    :accessor data-codewords)
+   (ec-codewords
+    :initarg :ec-codewords
+    :accessor ec-codewords)
+   (ec-codewords-per-block
+    :initarg :ec-codewords-per-block
+    :accessor ec-codewords-per-block)
+   (ec-blocks
+    :initarg :ec-blocks  ; List of numbers.
+    :accessor ec-blocks) 
+   (data-codewords-per-block
+    :initarg :data-codewords-per-block
+    :accessor data-codewords-per-block)))
 
-(defun make-table-entry (version
-                         ec-level
-                         total-codewords
-                         data-codewords
-                         ec-codewords
-                         ec-codewords-per-block
-                         ec-blocks
-                         data-codewords-per-block)
-  (make-instance 'version-ec-level-characteristics
-                 :version version
-                 :ec-level ec-level
-                 :total-codewords total-codewords
-                 :data-codewords data-codewords
-                 :ec-codewords ec-codewords
-                 :ec-codewords-per-block ec-codewords-per-block
-                 :ec-blocks ec-blocks
-                 :data-codewords-per-block data-codewords-per-block))
+(defun print-characteristics (entry)
+  (with-slots (version
+               ec-level
+               total-codewords
+               data-codewords
+               ec-codewords
+               ec-codewords-per-block
+               ec-blocks
+               data-codewords-per-block)
+      entry 
+    (format t "~a|~a (data|ec ~a|~a -> ~a) [~a ec / block in ~a] [~a data / block]~%"
+            version ec-level
+            data-codewords ec-codewords total-codewords
+            ec-codewords-per-block ec-blocks
+            data-codewords-per-block)))
+
+(defmacro make-ec-info-table (&rest rows)
+  `(make-array ,(length rows) :element-type 'version-ec-level-characteristics :initial-contents
+               ',(loop for (version
+                            ec-level
+                            total-codewords
+                            data-codewords
+                            ec-codewords
+                            ec-codewords-per-block
+                            ec-blocks
+                            data-codewords-per-block)
+                       in rows
+                       collect (make-instance 'version-ec-level-characteristics
+                                              :version version
+                                              :ec-level ec-level
+                                              :total-codewords total-codewords
+                                              :data-codewords data-codewords
+                                              :ec-codewords ec-codewords
+                                              :ec-codewords-per-block ec-codewords-per-block
+                                              :ec-blocks ec-blocks
+                                              :data-codewords-per-block data-codewords-per-block))))
 
 (defconstant +version-ec-characteristics+
-  (make-array 61 :element-type 'version-ec-level-characteristics :initial-contents
-              (list (make-table-entry 1 'L 26 19 7 7 '(1) '(19))
-                    (make-table-entry 1 'M 26 16 10 10 '(1) '(16))
-                    (make-table-entry 1 'Q 26 13 13 13 '(1) '(13))
-                    (make-table-entry 1 'H 26 9 17 17 '(1) '(9))
-                    (make-table-entry 2 'L 44 34 10 10 '(1) '(34))
-                    (make-table-entry 2 'M 44 28 16 16 '(1) '(28))
-                    (make-table-entry 2 'Q 44 22 22 22 '(1) '(22))
-                    (make-table-entry 2 'H 44 16 28 28 '(1) '(16))
-                    (make-table-entry 3 'L 70 55 15 15 '(1) '(55))
-                    (make-table-entry 3 'M 70 44 26 26 '(1) '(44))
-                    (make-table-entry 3 'Q 70 34 36 18 '(2) '(17))
-                    (make-table-entry 3 'H 70 26 44 22 '(2) '(13))
-                    (make-table-entry 4 'L 100 80 20 20 '(1) '(80))
-                    (make-table-entry 4 'M 100 64 36 18 '(2) '(32))
-                    (make-table-entry 4 'Q 100 48 52 26 '(2) '(24))
-                    (make-table-entry 4 'H 100 36 64 16 '(4) '(9))
-                    (make-table-entry 5 'L 134 108 26 26 '(1) '(108))
-                    (make-table-entry 5 'M 134 86 48 24 '(2) '(43))
-                    (make-table-entry 5 'Q 134 62 72 18 '(2 2) '(15 16))
-                    (make-table-entry 5 'H 134 46 88 22 '(2 2) '(11 12))
-                    (make-table-entry 6 'L 172 136 36 18 '(2) '(68))
-                    (make-table-entry 6 'M 172 108 64 16 '(4) '(27))
-                    (make-table-entry 6 'Q 172 76 96 24 '(4) '(19))
-                    (make-table-entry 6 'H 172 60 112 28 '(4) '(15))
-                    (make-table-entry 7 'L 196 156 40 20 '(2) '(78))
-                    (make-table-entry 7 'M 196 124 72 18 '(4) '(31))
-                    (make-table-entry 7 'Q 196 88 108 18 '(2 4) '(14 15))
-                    (make-table-entry 7 'H 196 66 130 26 '(4 1) '(13 14))
-                    (make-table-entry 8 'L 242 194 48 24 '(2) '(97))
-                    (make-table-entry 8 'M 242 154 88 22 '(2 2) '(38 39))
-                    (make-table-entry 8 'Q 242 110 132 22 '(4 2) '(18 19))
-                    (make-table-entry 8 'H 242 86 156 26 '(4 2) '(14 15))
-                    (make-table-entry 9 'L 292 232 60 30 '(2) '(116))
-                    (make-table-entry 9 'M 292 182 110 22 '(3 2) '(36 37))
-                    (make-table-entry 9 'Q 292 132 160 20 '(4 4) '(16 17))
-                    (make-table-entry 9 'H 292 100 192 24 '(4 4) '(12 13))
-                    (make-table-entry 10 'L 346 274 72 18 '(2 2) '(68 69))
-                    (make-table-entry 10 'M 346 216 130 26 '(4 1) '(43 44))
-                    (make-table-entry 10 'Q 346 154 192 24 '(6 2) '(19 20))
-                    (make-table-entry 10 'H 346 122 224 28 '(6 2) '(15 16))
-                    (make-table-entry 11 'L 404 324 80 20 '(4) '(81))
-                    (make-table-entry 11 'M 404 254 150 30 '(1 4) '(50 51))
-                    (make-table-entry 11 'Q 404 180 224 28 '(4 4) '(22 23))
-                    (make-table-entry 11 'H 404 140 264 24 '(3 8) '(12 13))
-                    (make-table-entry 12 'L 466 370 96 24 '(2 2) '(92 93))
-                    (make-table-entry 12 'M 466 290 176 22 '(6 2) '(36 37))
-                    (make-table-entry 12 'Q 466 206 260 26 '(4 6) '(20 21))
-                    (make-table-entry 12 'H 466 158 308 28 '(7 4) '(14 15))
-                    (make-table-entry 13 'L 532 428 104 26 '(4) '(107))
-                    (make-table-entry 13 'M 532 334 198 22 '(8 1) '(37 38))
-                    (make-table-entry 13 'Q 532 244 288 24 '(8 4) '(20 21))
-                    (make-table-entry 13 'H 532 180 352 22 '(12 4) '(11 12))
-                    (make-table-entry 14 'L 581 461 120 30 '(3 1) '(115 116))
-                    (make-table-entry 14 'M 581 365 216 24 '(4 5) '(40 41))
-                    (make-table-entry 14 'Q 581 261 320 20 '(11 5) '(16 17))
-                    (make-table-entry 14 'H 581 197 384 24 '(11 5) '(12 13))
-                    (make-table-entry 15 'L 655 523 132 22 '(5 1) '(87 88))
-                    (make-table-entry 15 'M 655 415 240 24 '(5 5) '(41 42))
-                    (make-table-entry 15 'Q 655 295 360 30 '(5 7) '(24 25))
-                    (make-table-entry 15 'H 655 223 432 24 '(11 7) '(12 13))
-                    (make-table-entry 16 'L 733 589 144 24 '(5 1) '(98 99))
-                    )))
-(defmacro $$test-table-entries ()
-  (and
-   (every #'(lambda (entry) (= (slot-value entry 'total-codewords) (+ (slot-value entry 'data-codewords) (slot-value entry 'ec-codewords)))) +version-ec-characteristics+)
-   (every #'(lambda (entry) (= (slot-value entry 'ec-codewords) (* (slot-value entry 'ec-codewords-per-block) (reduce #'+ (slot-value entry 'ec-blocks))))) +version-ec-characteristics+)
-   (every #'(lambda (entry) (= (slot-value entry 'data-codewords) (reduce #'+ (map 'list #'* (slot-value entry 'ec-blocks) (slot-value entry 'data-codewords-per-block))))) +version-ec-characteristics+)))
+  (make-ec-info-table
+   (1 L 26 19 7 7 (1) (19))
+   (1 M 26 16 10 10 (1) (16))
+   (1 Q 26 13 13 13 (1) (13))
+   (1 H 26 9 17 17 (1) (9))
+   (2 L 44 34 10 10 (1) (34))
+   (2 M 44 28 16 16 (1) (28))
+   (2 Q 44 22 22 22 (1) (22))
+   (2 H 44 16 28 28 (1) (16))
+   (3 L 70 55 15 15 (1) (55))
+   (3 M 70 44 26 26 (1) (44))
+   (3 Q 70 34 36 18 (2) (17))
+   (3 H 70 26 44 22 (2) (13))
+   (4 L 100 80 20 20 (1) (80))
+   (4 M 100 64 36 18 (2) (32))
+   (4 Q 100 48 52 26 (2) (24))
+   (4 H 100 36 64 16 (4) (9))
+   (5 L 134 108 26 26 (1) (108))
+   (5 M 134 86 48 24 (2) (43))
+   (5 Q 134 62 72 18 (2 2) (15 16))
+   (5 H 134 46 88 22 (2 2) (11 12))
+   (6 L 172 136 36 18 (2) (68))
+   (6 M 172 108 64 16 (4) (27))
+   (6 Q 172 76 96 24 (4) (19))
+   (6 H 172 60 112 28 (4) (15))
+   (7 L 196 156 40 20 (2) (78))
+   (7 M 196 124 72 18 (4) (31))
+   (7 Q 196 88 108 18 (2 4) (14 15))
+   (7 H 196 66 130 26 (4 1) (13 14))
+   (8 L 242 194 48 24 (2) (97))
+   (8 M 242 154 88 22 (2 2) (38 39))
+   (8 Q 242 110 132 22 (4 2) (18 19))
+   (8 H 242 86 156 26 (4 2) (14 15))
+   (9 L 292 232 60 30 (2) (116))
+   (9 M 292 182 110 22 (3 2) (36 37))
+   (9 Q 292 132 160 20 (4 4) (16 17))
+   (9 H 292 100 192 24 (4 4) (12 13))
+   (10 L 346 274 72 18 (2 2) (68 69))
+   (10 M 346 216 130 26 (4 1) (43 44))
+   (10 Q 346 154 192 24 (6 2) (19 20))
+   (10 H 346 122 224 28 (6 2) (15 16))
+   (11 L 404 324 80 20 (4) (81))
+   (11 M 404 254 150 30 (1 4) (50 51))
+   (11 Q 404 180 224 28 (4 4) (22 23))
+   (11 H 404 140 264 24 (3 8) (12 13))
+   (12 L 466 370 96 24 (2 2) (92 93))
+   (12 M 466 290 176 22 (6 2) (36 37))
+   (12 Q 466 206 260 26 (4 6) (20 21))
+   (12 H 466 158 308 28 (7 4) (14 15))
+   (13 L 532 428 104 26 (4) (107))
+   (13 M 532 334 198 22 (8 1) (37 38))
+   (13 Q 532 244 288 24 (8 4) (20 21))
+   (13 H 532 180 352 22 (12 4) (11 12))
+   (14 L 581 461 120 30 (3 1) (115 116))
+   (14 M 581 365 216 24 (4 5) (40 41))
+   (14 Q 581 261 320 20 (11 5) (16 17))
+   (14 H 581 197 384 24 (11 5) (12 13))
+   (15 L 655 523 132 22 (5 1) (87 88))
+   (15 M 655 415 240 24 (5 5) (41 42))
+   (15 Q 655 295 360 30 (5 7) (24 25))
+   (15 H 655 223 432 24 (11 7) (12 13))
+   (16 L 733 589 144 24 (5 1) (98 99))))
 ;;;; TODO fill the table............................................................
 
 ;; Table of mode indicators as defined in Table 2 (8.4).
@@ -111,71 +140,68 @@
         :fnc1              NIL
         :terminator        #*0000))
 
-                                        ; The character at the i-th index has a value of i.
+;; The character at the i-th index has a value of i.
 (defconstant +alphanumeric-table+
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:")
 
 (defconstant +character-count-indicator-table+
-  (make-array '(3 4) :element-type 'integer :initial-contents
-              '((10 9 8 8)
-                (12 11 16 10)
-                (14 13 16 12))))
+  #2A ((10 9 8 8)
+       (12 11 16 10)
+       (14 13 16 12)))
 
 (defconstant +remainder-bits-table+
-  (make-array 41 :element-type 'integer :initial-contents
-              '(0 0
-                7 7 7 7 7
-                0 0 0 0 0 0 0
-                3 3 3 3 3 3 3
-                4 4 4 4 4 4 4
-                3 3 3 3 3 3 3
-                0 0 0 0 0 0)))
+  #(0 0
+    7 7 7 7 7
+    0 0 0 0 0 0 0
+    3 3 3 3 3 3 3
+    4 4 4 4 4 4 4
+    3 3 3 3 3 3 3
+    0 0 0 0 0 0))
 
 ;; Defines the constant table, that maps (version, error-level) pairs
 ;; to the number of data codewords necessary.
 (defconstant +data-codewords-table+
-  (make-array '(41 4) :element-type 'integer :initial-contents
-              '((0 0 0 0)
-                (19 16 13 9)
-                (34 28 22 16)
-                (55 44 34 26)
-                (80 64 48 36)
-                (108 86 62 46)
-                (136 108 76 60)
-                (156 124 88 66)
-                (194 154 110 86)
-                (232 182 132 100)
-                (274 216 154 122)
-                (324 254 180 140)
-                (370 290 206 158)
-                (428 334 244 180)
-                (461 365 261 197)
-                (523 415 295 223)
-                (589 453 325 253)
-                (647 507 367 283)
-                (721 563 397 313)
-                (795 627 445 341)
-                (861 669 485 385)
-                (932 714 512 406)
-                (1006 782 568 442)
-                (1094 860 614 464)
-                (1174 914 664 514)
-                (1276 1000 718 538)
-                (1370 1062 754 596)
-                (1468 1128 808 628)
-                (1531 1193 871 661)
-                (1631 1267 911 701)
-                (1735 1373 985 745)
-                (1843 1455 1033 793)
-                (1955 1541 1115 845)
-                (2071 1631 1171 901)
-                (2191 1725 1231 961)
-                (2306 1812 1286 986)
-                (2434 1914 1354 1054)
-                (2566 1992 1426 1096)
-                (2702 2102 1502 1142)
-                (2812 2216 1582 1222)
-                (2956 2334 1666 1276))))
+  #2A ((0 0 0 0)
+       (19 16 13 9)
+       (34 28 22 16)
+       (55 44 34 26)
+       (80 64 48 36)
+       (108 86 62 46)
+       (136 108 76 60)
+       (156 124 88 66)
+       (194 154 110 86)
+       (232 182 132 100)
+       (274 216 154 122)
+       (324 254 180 140)
+       (370 290 206 158)
+       (428 334 244 180)
+       (461 365 261 197)
+       (523 415 295 223)
+       (589 453 325 253)
+       (647 507 367 283)
+       (721 563 397 313)
+       (795 627 445 341)
+       (861 669 485 385)
+       (932 714 512 406)
+       (1006 782 568 442)
+       (1094 860 614 464)
+       (1174 914 664 514)
+       (1276 1000 718 538)
+       (1370 1062 754 596)
+       (1468 1128 808 628)
+       (1531 1193 871 661)
+       (1631 1267 911 701)
+       (1735 1373 985 745)
+       (1843 1455 1033 793)
+       (1955 1541 1115 845)
+       (2071 1631 1171 901)
+       (2191 1725 1231 961)
+       (2306 1812 1286 986)
+       (2434 1914 1354 1054)
+       (2566 1992 1426 1096)
+       (2702 2102 1502 1142)
+       (2812 2216 1582 1222)
+       (2956 2334 1666 1276)))
 
 ;; Association list: (mode . index).
 (defconstant +mode->index+
@@ -268,8 +294,7 @@
   ;; For each data block generate the appropriate amount of
   ;; error correction codewords. Returns a list of the same
   ;; structure as the given data blocks.
-  (let ((ec-words (get-ec-codewords-per-block version ec-level))
-        result)
+  (let ((ec-words (get-ec-codewords-per-block version ec-level)))
     (flet ((gen-ec-words (data-codewords) (generate-ec-codewords data-codewords ec-words)))
       (loop for blocks-in-group in blocks
             collect (map 'list #'gen-ec-words blocks-in-group)))))

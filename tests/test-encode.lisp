@@ -83,5 +83,23 @@
                28))
   (print-bits #*11101110111110000011101100010110011000010101011110000111111101001100111001110001101101011101100011110100100010010101001111010010011001000000101100110111100111100101001001000001100011000101011110100010001111100001001010111011))
 
-
+(defun test-table-entries ()
+  (and
+   (every #'(lambda (entry)
+              (= (total-codewords entry)
+                 (+ (data-codewords entry)
+                    (ec-codewords entry))))
+          +version-ec-characteristics+)
+   (every #'(lambda (entry)
+              (= (ec-codewords entry)
+                 (* (ec-codewords-per-block entry)
+                    (reduce #'+ (ec-blocks entry)))))
+          +version-ec-characteristics+)
+   (every #'(lambda (entry)
+              (= (data-codewords entry)
+                 (reduce #'+
+                         (map 'list #'*
+                              (ec-blocks entry)
+                              (data-codewords-per-block entry)))))
+          +version-ec-characteristics+)))
 

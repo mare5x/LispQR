@@ -146,6 +146,13 @@
         (return-from is-fully-marked-submatrix nil)))
   t)
 
+(defun out-of-bounds (dimensions row col)
+  (destructuring-bind (rows cols) dimensions
+    (or (< row 0)
+        (< col 0)
+        (>= row rows)
+        (>= col cols))))
+
 (defun match-submatrix (matrix sub-matrix position)
   (loop-submatrix ((row col) (sub-row sub-col)) ((array-dimensions sub-matrix) position)
     (if (out-of-bounds (array-dimensions matrix) row col)
@@ -154,13 +161,6 @@
             (aref sub-matrix sub-row sub-col))
         (return-from match-submatrix)))
   t)
-
-(defun out-of-bounds (dimensions row col)
-  (destructuring-bind (rows cols) dimensions
-    (or (< row 0)
-        (< col 0)
-        (>= row rows)
-        (>= col cols))))
 
 (defun matrix-size (matrix)
   (array-dimension matrix 0))
@@ -321,8 +321,8 @@
 (defun mask-pattern-test-fn (mask-number)
   (case mask-number
     (0 #'(lambda (row col) (zerop (mod (+ row col) 2))))
-    (1 #'(lambda (row col) (zerop (mod row 2))))
-    (2 #'(lambda (row col) (zerop (mod col 3))))
+    (1 #'(lambda (row col) (declare (ignore col)) (zerop (mod row 2))))
+    (2 #'(lambda (row col) (declare (ignore row)) (zerop (mod col 3))))
     (3 #'(lambda (row col) (zerop (mod (+ row col) 3))))
     (4 #'(lambda (row col) (zerop (mod (+ (floor-div row 2)
                                           (floor-div col 3))
