@@ -81,9 +81,9 @@
     :H #*10))
 
 (defun draw-debug-matrix (matrix info-str)
-  (if *draw-debug*
-      (write-qr-matrix (merge-pathnames *draw-debug-path* (format nil "debug-~a.png" info-str))
-                       matrix)))
+  (when *draw-debug*
+    (let ((path (merge-pathnames *draw-debug-path* (format nil "debug-~a.png" info-str))))
+      (write-qr-matrix path matrix))))
 
 (defmacro loop-submatrix (((row col) (&optional (sub-row (gensym)) (sub-col (gensym))))
                           (sub-dimensions &optional (position '(0 0)))
@@ -373,7 +373,7 @@
                                  (setf consecutive-count 1)))
                       (setf prev-bit bit)))
 
-    (format t "Rule1 penalty: ~a~%" penalty)
+    (format *draw-debug* "Rule1 penalty: ~a~%" penalty)
     penalty))
 
 (defun eval-mask-penalty-rule-2 (matrix)
@@ -387,9 +387,9 @@
           (loop for col below (1- size)
                 for bit = (aref matrix row col)
                 do (when (is-fully-marked-submatrix matrix '(2 2) `(,row ,col) bit)
-                     (format t "Found 2x2 pattern at (~a ~a)~%" row col)
+                     (format *draw-debug* "Found 2x2 pattern at (~a ~a)~%" row col)
                      (incf penalty 3))))
-    (format t "Rule2 penalty: ~a~%" penalty)
+    (format *draw-debug* "Rule2 penalty: ~a~%" penalty)
     penalty))
 
 (defun eval-mask-penalty-rule-3 (matrix)
@@ -406,14 +406,14 @@
           (loop for col below size do
                 (when (some #'(lambda (pattern) (match-submatrix matrix pattern `(,row ,col)))
                             horizontal-patterns)
-                  (format t "Found horizontal pattern at (~a ~a)~%" row col)
+                  (format *draw-debug* "Found horizontal pattern at (~a ~a)~%" row col)
                   (incf penalty 40))
                 (when (some #'(lambda (pattern) (match-submatrix matrix pattern `(,row ,col)))
                             vertical-patterns)
-                  (format t "Found vertical pattern at (~a ~a)~%" row col)
+                  (format *draw-debug* "Found vertical pattern at (~a ~a)~%" row col)
                   (incf penalty 40))))
 
-    (format t "Rule3 penalty ~a~%" penalty)
+    (format *draw-debug* "Rule3 penalty ~a~%" penalty)
     penalty))
 
 (defun eval-mask-penalty-rule-4 (matrix)
@@ -433,13 +433,13 @@
     (setf k (if (<= proportion 50)
                 (- 9 (floor proportion 5))
                 (- (ceiling proportion 5) 11)))
-    (format t "Proportion of dark modules: ~$~%" proportion)
-    (format t "Rule4 penalty ~a~%" (* 10 k))
+    (format *draw-debug* "Proportion of dark modules: ~$~%" proportion)
+    (format *draw-debug* "Rule4 penalty ~a~%" (* 10 k))
     (* 10 k)))
 
 (defun eval-mask-penalty (matrix)
-  (format t "Evaluating penalties ...~%")
-  (print-2d-array matrix)
+  (format *draw-debug* "Evaluating penalties ...~%")
+  (if *draw-debug* (print-2d-array matrix))
   (+ (eval-mask-penalty-rule-1 matrix)
      (eval-mask-penalty-rule-2 matrix)
      (eval-mask-penalty-rule-3 matrix)
@@ -466,7 +466,7 @@
              (setf best-mask mask-number))
            (draw-debug-matrix matrix (format nil "mask-~d" mask-number))
 
-        finally (format t "Lowest penalty (~a) using pattern ~a~%" min-penalty best-mask)
+        finally (format *draw-debug* "Lowest penalty (~a) using pattern ~a~%" min-penalty best-mask)
                 (return (values min-matrix best-mask))))
 
 (defun generate-format-bits (ec-level mask-pattern)
@@ -517,7 +517,7 @@
   (let ((size (matrix-size matrix))
         (pattern-size (array-dimension +finder-pattern+ 0))
         (bit-idx 0))
-    (format t "Format information bits: ~a~%" bits)
+    (format *draw-debug* "Format information bits: ~a~%" bits)
     
     ;; Top-left
     (loop-submatrix ((row col) (sub-row sub-col)) ('(1 6) `(,(1+ pattern-size) 0))

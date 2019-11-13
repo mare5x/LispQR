@@ -1,5 +1,10 @@
 (in-package :mare5x.lispqr.encode)
 
+(defparameter *encode-debug* nil)
+
+(defmacro when-debugging (&body body)
+  `(when *encode-debug* ,@body))
+
 (defclass version-ec-level-characteristics ()
   ((version
     :initarg :version
@@ -434,29 +439,38 @@
   (let (data-codewords
         data-blocks
         ec-blocks
-        result)   
-
+        result)
     (setf data-codewords (bits->codewords
                           (encode-alphanumeric str :version version :ec-level ec-level)
                           version ec-level))
-    
-    (format t "data-codewords: ~a~%" data-codewords)
-    (print-bits data-codewords :hex)
+
+    (when-debugging
+      (format t "data-codewords: ~a~%" data-codewords)
+      (print-bits data-codewords :hex))
     
     (setf data-blocks
           (data-codewords->blocks data-codewords version ec-level))
 
-    (format t "data-blocks: ~a~%" data-blocks)
+    (when-debugging (format t "data-blocks: ~a~%" data-blocks))
     
     (setf ec-blocks
           (data-codeword-blocks->ec-blocks data-blocks version ec-level))
 
-    (format t "ec-blocks: ~a~%" ec-blocks)
+    (when-debugging (format t "ec-blocks: ~a~%" ec-blocks))
 
     (setf result (interleave-blocks data-blocks ec-blocks version))
 
-    (format t "result: ~a~%" result)
-    (print-bits result :hex)
+    (when-debugging
+      (format t "result: ~a~%" result)
+      (print-bits result :hex))
 
     ;; Return a bit-stream (single bit-vector).
     (apply #'concatenate 'bit-vector result)))
+
+(defun encode->image (str path &key (version 1) (ec-level :q))
+  (write-qr-matrix path 
+                   (make-qr-matrix
+                    (encode str :version version :ec-level ec-level)
+                    version
+                    ec-level)))
+

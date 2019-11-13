@@ -38,5 +38,6 @@
 
             ;; Fill the bottom quiet zone
             finally (loop repeat (* row-offset module-size-px) do (write-row blank-row png)))
-      (finish-png png))))
+      (finish-png png))
+    (format t "~a~%" (truename file-path))))
 

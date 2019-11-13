@@ -61,5 +61,6 @@
    :common-lisp
    :mare5x.lispqr.utils
    :mare5x.lispqr.galois
-   :mare5x.lispqr.matrix))
+   :mare5x.lispqr.matrix
+   :mare5x.lispqr.image))
 
