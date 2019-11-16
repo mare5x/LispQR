@@ -48,12 +48,18 @@
   ;; Test from https://www.thonky.com/qr-code-tutorial/data-encoding
   (format t "TEST: HELLO WORLD 1/Q~%")
   (print-bits '(#*00100000 #*01011011 #*00001011 #*01111000 #*11010001 #*01110010 #*11011100 #*01001101 #*01000011 #*01000000 #*11101100 #*00010001 #*11101100))
-  (print-bits (bits->codewords (encode-alphanumeric "HELLO WORLD") 1 :q))
+  (print-bits (encode-codewords "HELLO WORLD" 1 :q :alphanumeric))
 
   ;; Test against examples from https://www.nayuki.io/page/creating-a-qr-code-step-by-step
   (format t "TEST: PROJECT NAYUKI 2/H~%")
   (print-bits #*00100000011101001000000010001001011010100000101010011110110000010101110000110000111001011000000011101100000100011110110000010001)
-  (print-bits (bits->codewords (encode-alphanumeric "PROJECT NAYUKI" :version 2 :ec-level :H) 2 :H)))
+  (print-bits (encode-codewords "PROJECT NAYUKI" 2 :H :alphanumeric)))
+
+(defun test-byte-encoding ()
+  (format t "Hello, world! 123 5/H~%")
+  (print-bits #*01000001000101001000011001010110110001101100011011110010110000100000011101110110111101110010011011000110010000100001001000000011000100110010001100110000111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100000100011110110000010001111011000001000111101100)
+
+  (print-bits (encode-codewords "Hello, world! 123" 5 :H :8-bit-byte)))
 
 (defun test-ecc ()
   ;; Test "PROJECT NAYUKI" in alphanumeric mode from:

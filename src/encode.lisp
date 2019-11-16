@@ -247,6 +247,10 @@
 (defconstant +alphanumeric-table+
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:")
 
+;;                | Numeric mode | Alphanumeric mode | Byte mode | Kanji mode
+;; Version 1 to 9 |
+;;       10 to 26 |
+;;       27 to 40 | 
 (defconstant +character-count-indicator-table+
   #2A ((10 9 8 8)
        (12 11 16 10)
@@ -304,14 +308,14 @@
     ((<= 27 version 40)
      (aref +character-count-indicator-table+ 2 mode))))
 
-(defun pair->binary (pair)
+(defun alnum-pair->binary (pair)
   (if (= 1 (length pair))
       (decimal->n-bit (elt pair 0) 6)
       (let ((a (elt pair 0))
             (b (elt pair 1)))
         (decimal->n-bit (+ b (* 45 a)) 11))))
 
-(defun bits->codewords (bits version ec-level)
+(defun encoded-parts->codewords (bits version ec-level)
   "Transforms a sequence of bits in 
    (mode-indicator, character-count-indicator, encoded-data, terminator)
    to a valid concatenated sequence of 8-bit codewords and padded
@@ -390,18 +394,38 @@
 
       result)))
 
-(defun encode-alphanumeric (str &key (version 1) (ec-level :q))
-  "Encodes the given string 'str' using alphanumeric mode.
-   Returns a list of parts: 
-     (mode-indicator, character-count-indicator, encoded-data, terminator)."
+(defun encode-character-count-indicator (str version encoding-mode)
+  (decimal->n-bit (length str)
+                  (character-count-indicator-bits encoding-mode version)))
 
-  (let ((values nil)
-        (char-count-bits nil)
-        (required-bits nil)
-        (total-bits nil)
-        (terminator-width nil))
+(defun encode-mode-indicator (encoding-mode)
+  (getf +mode-indicators+ encoding-mode))
+
+(defun encode-terminator (parts version ec-level)
+  "Calculate required terminator bits. 
+   parts is a sequence that contains the mode indicator and encoded data."
+  (let ((required-bits (* 8 (get-required-data-codewords version ec-level)))
+        (total-bits (loop for bits in parts
+                          sum (length bits))))
+    ;; The terminator is between 0 and 4 bits of zeros.
+    (list (make-array (clamp (- required-bits total-bits) 0 4)
+                      :element-type 'bit :initial-element 0))))
+
+(defun encode-add-metadata (encoded-data str version ec-level encoding-mode)
+  "Add Mode Indicator, Character count indicator and terminator to binary data.
+   Returns a list of codewords."
+  (let ((parts (list encoded-data))) 
+    (push (encode-character-count-indicator str version encoding-mode)
+          parts)
+    (push (encode-mode-indicator encoding-mode) parts)
+    (nconc parts (encode-terminator parts version ec-level))
+    (encoded-parts->codewords parts version ec-level)))
+
+(defun encode-alphanumeric (str)
+  "Encodes the given string 'str' using alphanumeric mode."
+  (let ((values nil))
     ;; Step 1. Determine character values according to translation table.
-                                        ; The value of each character is it's position (index) in the table.
+    ;; The value of each character is it's position (index) in the table.
     (setf values (map 'vector #'(lambda (ch) (position ch +alphanumeric-table+)) str))
 
     ;; Step 2. Divide the result into groups of two decimal values.
@@ -409,40 +433,34 @@
 
     ;; Step 3. Convert each group to its 11-bit binary equivalent.
     (setf values (loop for pair in values
-                       collect (pair->binary pair)))
+                       collect (alnum-pair->binary pair)))
     ;; Concatenate the bit vectors into a single bit vector:
     ;; Now we have the one element list: (encoded-data).
-    (setf values (list (reduce #'(lambda (a b) (concatenate 'bit-vector a b)) values)))
+    (splice-list values 'bit-vector)))
 
-    ;; Step 4. Character count indicator to binary.
-    (setf char-count-bits
-          (decimal->n-bit (length str)
-                          (character-count-indicator-bits :alphanumeric version)))
+(defun encode-bytes (str)
+  "Encodes the given string 'str' using Byte mode.
+   The character set used is: ISO/IEC 8859-1, which is very similar to Unicode.
+   As such encoding is very simple."
+  (flet ((encode-to-byte (ch)
+           (decimal->8-bit (char-code ch))))
+    (splice-list (map 'list #'encode-to-byte str) 'bit-vector)))
 
-    ;; Step 5. Add Mode Indicator and Character count indicator to
-    ;; binary data.
-    (push char-count-bits values)
-    (push (getf +mode-indicators+ :alphanumeric) values)
+(defun encode-string-using-mode (str encoding-mode)
+  (ecase encoding-mode
+    (:alphanumeric (encode-alphanumeric str))
+    (:8-bit-byte (encode-bytes str))))
 
-    ;; Step 6. Add a terminator.
-    (setf required-bits (get-required-data-codewords version ec-level))
-    (setf required-bits (* 8 required-bits))
-    (setf total-bits (loop for bits in values
-                           sum (length bits)))
-    ;; The terminator is between 0 and 4 bits of zeros.
-    (setf terminator-width (clamp (- required-bits total-bits) 0 4))
-    (nconc values (list (make-array terminator-width :element-type 'bit :initial-element 0)))
-    
-    values))
+(defun encode-codewords (str version ec-level encoding-mode)
+  (encode-add-metadata (encode-string-using-mode str encoding-mode)
+                       str version ec-level encoding-mode))
 
-(defun encode (str &key (version 1) (ec-level :q))
+(defun encode (str &key (version 1) (ec-level :q) (encoding-mode :8-bit-byte))
   (let (data-codewords
         data-blocks
         ec-blocks
         result)
-    (setf data-codewords (bits->codewords
-                          (encode-alphanumeric str :version version :ec-level ec-level)
-                          version ec-level))
+    (setf data-codewords (encode-codewords str version ec-level encoding-mode))
 
     (when-debugging
       (format t "data-codewords: ~a~%" data-codewords)
@@ -467,10 +485,10 @@
     ;; Return a bit-stream (single bit-vector).
     (apply #'concatenate 'bit-vector result)))
 
-(defun encode->image (str path &key (version 1) (ec-level :q))
+(defun encode->image (str path &key (version 1) (ec-level :q) (encoding-mode :8-bit-byte))
   (write-qr-matrix path 
                    (make-qr-matrix
-                    (encode str :version version :ec-level ec-level)
+                    (encode str :version version :ec-level ec-level :encoding-mode encoding-mode)
                     version
                     ec-level)))
 

@@ -35,7 +35,6 @@
 (defmacro swap (seq i j)
   `(rotatef (elt ,seq ,i) (elt ,seq ,j)))
 
-
 (defun string+ (&rest strings)
   (apply #'concatenate 'string strings))
 
@@ -54,9 +53,9 @@
                  (make-array (- 8 pad) :element-type 'bit)
                  bits)))
 
-(defun splice-list (seq)
+(defun splice-list (seq &optional (rtype 'list))
   ;; ((1 2 3)) -> (1 2 3) 
-  (reduce #'(lambda (x y) (concatenate 'list x y)) seq))
+  (reduce #'(lambda (x y) (concatenate rtype x y)) seq))
 
 (defun split-list (seq n)
   "Splits a sequence into a list of n-wide parts."
