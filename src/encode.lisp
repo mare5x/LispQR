@@ -455,7 +455,12 @@
   (encode-add-metadata (encode-string-using-mode str encoding-mode)
                        str version ec-level encoding-mode))
 
-(defun encode (str &key (version 1) (ec-level :q) (encoding-mode :8-bit-byte))
+(defun encode (str version ec-level encoding-mode)
+  "Completes the encoding necessary to fill in the QR matrix.
+
+   Assumes the given version, error correction level and encoding mode
+   are compatible with the given string."
+  
   (let (data-codewords
         data-blocks
         ec-blocks
@@ -485,10 +490,89 @@
     ;; Return a bit-stream (single bit-vector).
     (apply #'concatenate 'bit-vector result)))
 
-(defun encode->image (str path &key (version 1) (ec-level :q) (encoding-mode :8-bit-byte))
-  (write-qr-matrix path 
-                   (make-qr-matrix
-                    (encode str :version version :ec-level ec-level :encoding-mode encoding-mode)
-                    version
-                    ec-level)))
+(defun alphanumeric-bit-stream-length (str version)
+  (+ (length (encode-mode-indicator :alphanumeric))
+     (character-count-indicator-bits :alphanumeric version)
+     (* 11 (floor-div (length str) 2))
+     (* 6 (mod (length str) 2))))
+
+(defun byte-bit-stream-length (str version)
+  (+ (length (encode-mode-indicator :8-bit-byte))
+     (character-count-indicator-bits :8-bit-byte version)
+     (* 8 (length str))))
+
+(defun bit-stream-length (str version encoding-mode)
+  (ecase encoding-mode
+    (:8-bit-byte (byte-bit-stream-length str version))
+    (:alphanumeric (alphanumeric-bit-stream-length str version))))
+
+(defun get-min-version (str min-version ec-level encoding-mode)
+  "Returns the minimum version that fits the given string, encoded
+   using encoding-mode and using the specified error correction level."
+
+  (loop for version from min-version to 40
+        for len = (bit-stream-length str version encoding-mode)
+        for entry = (get-characteristics-entry version ec-level)
+        while (< (* 8 (data-codewords entry)) len)
+        finally (return version)))
+
+(defun get-min-version-and-ec-level (str min-version encoding-mode)
+  "Returns the highest error correction level and lowest version
+   that encodes the given string."
+
+  (loop for version from min-version to 40 do
+        (loop for ec-level in '(:H :Q :M :L)
+              for entry = (get-characteristics-entry version ec-level)
+              for len = (bit-stream-length str version encoding-mode)
+              do (if (< len (* 8 (data-codewords entry)))
+                     (return-from get-min-version-and-ec-level (values version ec-level))))))
+
+(defun encodable-alphanumerically? (str)
+  (every #'(lambda (c) (position c +alphanumeric-table+)) str))
+
+(defun encodable-byte-mode? (str)
+  (every #'(lambda (c) (<= (char-code c) 255)) str))
+
+(defun get-best-encoding-mode (str)
+  (cond ((encodable-alphanumerically? str) :alphanumeric)
+        ((encodable-byte-mode? str) :8-bit-byte)
+        (t (error "Cannot encode string! ~a" str))))
+
+(defclass encoding-parameters-t () 
+  ((version :initarg :version)
+   (ec-level :initarg :ec-level)
+   (encoding-mode :initarg :encoding-mode)))
+
+(defun get-encoding-parameters (str &key (min-version 1) ec-level encoding-mode)
+  "Picks the 'best' encoding parameters to encode the given string, prioritizing lower
+   versions and higher error correction levels."
+  
+  (setf encoding-mode (if encoding-mode
+                          encoding-mode
+                          (get-best-encoding-mode str)))
+  (if ec-level
+      (setf min-version (get-min-version str min-version ec-level encoding-mode))
+      (setf (values min-version ec-level) (get-min-version-and-ec-level str min-version encoding-mode)))
+  (make-instance 'encoding-parameters-t
+                 :version min-version
+                 :ec-level ec-level 
+                 :encoding-mode encoding-mode))
+
+(defun encode->image (str path &key (min-version 1) ec-level encoding-mode (mask-number -1))
+  (with-slots (version ec-level encoding-mode)
+      (get-encoding-parameters str
+                               :min-version min-version
+                               :ec-level ec-level
+                               :encoding-mode encoding-mode)
+    (format t "Encoding \"~a\"~%" str)
+    (format t "Version ~a~%" version)
+    (format t "Error correction level ~a~%" ec-level)
+    (format t "Encoding mode ~a~%" encoding-mode)
+    (format t "Mask-number ~a~%" mask-number)
+    (write-qr-matrix path 
+                     (make-qr-matrix
+                      (encode str version ec-level encoding-mode)
+                      version
+                      ec-level
+                      mask-number))))
 
