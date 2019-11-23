@@ -559,6 +559,15 @@
                  :encoding-mode encoding-mode))
 
 (defun encode->image (str path &key (min-version 1) ec-level encoding-mode (mask-number -1))
+  "Encode the string 'str' and save it to 'path' (png format). 
+
+   Optionally specify the minimum version to be used 'min-version' (1-40).
+   Error correction level 'ec-level' can be one of (:L, :M, :Q, :H) as defined by the standard. 
+   The 'encoding-mode' must be in (:alphanumeric :8-bit-byte). 
+   To force the use of a specific masking pattern, use 'mask-number' (0-7). 
+
+   If optional parameters are omitted, appropriate values will be automatically computed."
+  
   (with-slots (version ec-level encoding-mode)
       (get-encoding-parameters str
                                :min-version min-version

@@ -1,5 +1,3 @@
-;;; Use 1 for a dark module and 0 for a white/blank module.
-
 (in-package :mare5x.lispqr.utils)
 
 
@@ -8,12 +6,8 @@
          for ,value = (elt ,seq ,index)
          ,@loop-body))
 
-(defmacro char-tuple (key value)
-  `(cons (character ,key) ,value))
-
-(defmacro char-tuple-list (&rest pairs)
-  `(loop for (k v) on (list ,@pairs) by #'cddr while v
-         collect (char-tuple k v)))
+(defmacro swap (seq i j)
+  `(rotatef (elt ,seq ,i) (elt ,seq ,j)))
 
 (defun get-elt (seq index &optional (default nil))
   (if (< index (length seq))
@@ -25,15 +19,6 @@
 
 (defun floor-div (a b)
   (floor (/ a b)))
-
-(defun create-hash-table (plist)
-  (let ((ht (make-hash-table :size (/ (length plist) 2))))
-    (loop for (key value) on plist by #'cddr
-          do (setf (gethash key ht) value))
-    ht))
-
-(defmacro swap (seq i j)
-  `(rotatef (elt ,seq ,i) (elt ,seq ,j)))
 
 (defun string+ (&rest strings)
   (apply #'concatenate 'string strings))

@@ -1,8 +1,43 @@
 # LispQR
 
-QR Code encoding and decoding using Common Lisp.
+QR Code encoding written in **Common Lisp**.
 
 
-Install _zpng_ using _Quicklisp_: (ql:quickload "zpng").
-Requires _asdf_
+## Usage
+
+To write to PNG files, you will need to install [_zpng_](https://www.xach.com/lisp/zpng/). Using _Quicklisp_ (requires _asdf_): 
+```lisp
+(ql:quickload "zpng"). 
+```
+
+```lisp
+;; Load/compile source: load.lisp
+
+;; Change into the 'encode' package.
+(in-package :mare5x.lispqr.encode)
+
+;; Encode to a PNG image file.
+(encode->image "https://github.com/mare5x" "test.png" :ec-level :H)
+```
+  
+![https://github.com/mare5x](./mare5x-github.png)   
+(string: "https://github.com/mare5x", version: 4, error correction level: high, encoding mode: byte)  
+
+
+### Portacle
+
+Checklist to get up and running using Portacle.
+  1. Install [Portacle](https://portacle.github.io/).
+  2. _Ctrl-X, F_ \<path to repo/load.lisp\>
+  3. Focus the code buffer and press _Ctrl-C, L_ to load the current file.
+  4. ```(ql:quickload "zpng")``` in the REPL.
+  5. Now you are ready to tinker with LispQR.
+
+## References
+
+Written based on QR standards "ISO/IEC 18004:2000" and "ISO/IEC 18004:2006".
+
+Great additional resources:
+  * https://www.thonky.com/qr-code-tutorial/
+  * https://www.nayuki.io/page/creating-a-qr-code-step-by-step
 
