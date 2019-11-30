@@ -14,7 +14,7 @@
                         (setf prev (logxor prev +MOD-CONST+)))
                  collect prev)))
 
-(defconstant +POWERS-OF-2+ (generate-powers-of-2))
+(defparameter +POWERS-OF-2+ (generate-powers-of-2))
 
 (defun int->power (a)
   (position a +powers-of-2+))

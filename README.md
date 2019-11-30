@@ -5,13 +5,14 @@ QR Code encoding written in **Common Lisp**.
 
 ## Usage
 
-To write to PNG files, you will need to install [_zpng_](https://www.xach.com/lisp/zpng/). Using _Quicklisp_ (requires _asdf_): 
-```lisp
-(ql:quickload "zpng"). 
+To write to PNG files, you will need to install [_zpng_](https://www.xach.com/lisp/zpng/). If you load LispQR using _lispqr.asd_, all dependencies will get installed automatically:
+```lisp 
+(ql:quickload "lispqr")
 ```
 
 ```lisp
-;; Load/compile source: load.lisp
+;; Compile the files (lispqr.asd):
+;; (ql:quickload "lispqr")
 
 ;; Change into the 'encode' package.
 (in-package :mare5x.lispqr.encode)
@@ -28,9 +29,9 @@ To write to PNG files, you will need to install [_zpng_](https://www.xach.com/li
 
 Checklist to get up and running using Portacle.
   1. Install [Portacle](https://portacle.github.io/).
-  2. _Ctrl-X, F_ \<path to repo/load.lisp\>
-  3. Focus the code buffer and press _Ctrl-C, L_ to load the current file.
-  4. ```(ql:quickload "zpng")``` in the REPL.
+  2. _Ctrl-X, Ctrl-F_ \<path to repo/lispqr.asd\>
+  3. Focus the code buffer and press _Ctrl-C, Ctrl-K_ to load the current file.
+  4. ```(ql:quickload "lispqr")``` in the REPL.
   5. Now you are ready to tinker with LispQR.
 
 ## References

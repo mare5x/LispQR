@@ -15,7 +15,7 @@
 
 ;; These are the row/column coordinates of the center module
 ;; of each alignment pattern. For each version there is a list.
-(defconstant +alignment-pattern-locations+
+(defparameter +alignment-pattern-locations+
   #1A (()
        ()
        (6 18)
@@ -58,7 +58,7 @@
        (6 26 54 82 110 138 166)
        (6 30 58 86 114 142 170)))
 
-(defconstant +finder-pattern+
+(defparameter +finder-pattern+
   #2A (#*1111111
        #*1000001
        #*1011101
@@ -67,14 +67,14 @@
        #*1000001
        #*1111111))
 
-(defconstant +alignment-pattern+
+(defparameter +alignment-pattern+
   #2A (#*11111
        #*10001
        #*10101
        #*10001
        #*11111))
 
-(defconstant +ec-bits+
+(defparameter +ec-bits+
   '(:L #*01
     :M #*00
     :Q #*11

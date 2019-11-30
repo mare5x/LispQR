@@ -32,6 +32,7 @@
     :accessor data-codewords-per-block)))
 
 (defun print-characteristics (entry)
+  ;; Print all with: (map nil 'print-characteristics +version-ec-characteristics+)
   (with-slots (version
                ec-level
                total-codewords
@@ -48,27 +49,30 @@
             data-codewords-per-block)))
 
 (defmacro make-ec-info-table (&rest rows)
+  ;; The table cannot be generated at compile time, since the array's contents are
+  ;; class instances. Hence, this macro outputs a template that does the job.
   `(make-array ,(length rows) :element-type 'version-ec-level-characteristics :initial-contents
-               ',(loop for (version
-                            ec-level
-                            total-codewords
-                            data-codewords
-                            ec-codewords
-                            ec-codewords-per-block
-                            ec-blocks
-                            data-codewords-per-block)
-                       in rows
-                       collect (make-instance 'version-ec-level-characteristics
-                                              :version version
-                                              :ec-level ec-level
-                                              :total-codewords total-codewords
-                                              :data-codewords data-codewords
-                                              :ec-codewords ec-codewords
-                                              :ec-codewords-per-block ec-codewords-per-block
-                                              :ec-blocks ec-blocks
-                                              :data-codewords-per-block data-codewords-per-block))))
+               (map 'list 'eval
+                    ',(loop for (version
+                                 ec-level
+                                 total-codewords
+                                 data-codewords
+                                 ec-codewords
+                                 ec-codewords-per-block
+                                 ec-blocks
+                                 data-codewords-per-block)
+                            in rows
+                            collect `(make-instance 'version-ec-level-characteristics
+                                      :version ,version
+                                      :ec-level ,(read-from-string (format nil ":~a" `,ec-level))
+                                      :total-codewords ,total-codewords
+                                      :data-codewords ,data-codewords
+                                      :ec-codewords ,ec-codewords
+                                      :ec-codewords-per-block ,ec-codewords-per-block
+                                      :ec-blocks ',ec-blocks
+                                      :data-codewords-per-block ',data-codewords-per-block)))))
 
-(defconstant +version-ec-characteristics+
+(defparameter +version-ec-characteristics+
   (make-ec-info-table
    (1 L 26 19 7 7 (1) (19))
    (1 M 26 16 10 10 (1) (16))
@@ -233,7 +237,7 @@
 
 ;; Table of mode indicators as defined in Table 2 (8.4).
 ;; Each entry is a composed of 4 bits.
-(defconstant +mode-indicators+
+(defparameter +mode-indicators+
   (list :eci               #*0111
         :numeric           #*0001
         :alphanumeric      #*0010
@@ -244,19 +248,19 @@
         :terminator        #*0000))
 
 ;; The character at the i-th index has a value of i.
-(defconstant +alphanumeric-table+
+(defparameter +alphanumeric-table+
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:")
 
 ;;                | Numeric mode | Alphanumeric mode | Byte mode | Kanji mode
 ;; Version 1 to 9 |
 ;;       10 to 26 |
 ;;       27 to 40 | 
-(defconstant +character-count-indicator-table+
+(defparameter +character-count-indicator-table+
   #2A ((10 9 8 8)
        (12 11 16 10)
        (14 13 16 12)))
 
-(defconstant +remainder-bits-table+
+(defparameter +remainder-bits-table+
   #(0 0
     7 7 7 7 7
     0 0 0 0 0 0 0
@@ -266,14 +270,14 @@
     0 0 0 0 0 0))
 
 ;; Association list: (mode . index).
-(defconstant +mode->index+
+(defparameter +mode->index+
   (pairlis '(:numeric :alphanumeric :8-bit-byte :kanji) '(0 1 2 3)))
 
 ;; Assoc list: (error-correction-level . index).
-(defconstant +ec-level->index+
+(defparameter +ec-level->index+
   (pairlis '(:L :M :Q :H) '(0 1 2 3)))
 
-(defconstant +pad-alternators+ '(#*11101100 #*00010001))
+(defparameter +pad-alternators+ '(#*11101100 #*00010001))
 
 (defun get-characteristics-entry (version ec-level)
   (setf ec-level (cdr (assoc ec-level +ec-level->index+)))
