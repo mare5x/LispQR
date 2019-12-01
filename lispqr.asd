@@ -8,6 +8,7 @@
   :version "1.0.0"
   :author "mare5x.dev@gmail.com"
   :description "QR code encoding."
+  :license "MIT"
   :serial t
   :depends-on ("zpng")
   :components ((:module "src"
