@@ -2,6 +2,7 @@
 
 (in-package :mare5x.lispqr.image)
 
+
 (defun write-qr-matrix (file-path matrix &key (module-size-px 8))
   ;; 'matrix' is a 2-d array of bit values.
   ;; Bit 1 -> black;
@@ -40,4 +41,13 @@
             finally (loop repeat (* row-offset module-size-px) do (write-row blank-row png)))
       (finish-png png))
     (format t "~a~%" (truename file-path))))
+
+
+(defun write-qr-text (matrix &key (dark-char #\#) (light-char #\ ) (destination t))
+  (let ((matrix-size (array-dimension matrix 0)))
+    (loop for row from 0 below matrix-size do
+          (loop for col from 0 below matrix-size
+                for module-char = (if (= (aref matrix row col) 1) dark-char light-char)
+                do (write-char module-char destination))
+          (fresh-line destination))))
 

@@ -562,6 +562,26 @@
                  :ec-level ec-level 
                  :encoding-mode encoding-mode))
 
+(defun encode->matrix (str &key (min-version 1) ec-level encoding-mode (mask-number -1))
+  "Encode the string 'str' and return the encoded QR matrix (2-d array).
+   The QR matrix is a 2-d array of only 1s and 0s. A 1 denotes
+   a dark module and a 0 denotes a light module. 
+
+   Optional parameters are the same as for 'encode->image'.
+
+   NOTE: the returned matrix does NOT contain the Quiet zone (blank border)."
+  
+  (with-slots (version ec-level encoding-mode)
+      (get-encoding-parameters str
+                               :min-version min-version
+                               :ec-level ec-level
+                               :encoding-mode encoding-mode) 
+    (make-qr-matrix
+     (encode str version ec-level encoding-mode)
+     version
+     ec-level
+     mask-number)))
+
 (defun encode->image (str path &key (min-version 1) ec-level encoding-mode (mask-number -1))
   "Encode the string 'str' and save it to 'path' (png format). 
 

@@ -40,7 +40,8 @@
    :zpng
    :mare5x.lispqr.utils)
   (:export
-   :write-qr-matrix))
+   :write-qr-matrix
+   :write-qr-text))
 
 (defpackage :mare5x.lispqr.matrix
   (:use :common-lisp
