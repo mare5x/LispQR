@@ -63,5 +63,8 @@
    :mare5x.lispqr.utils
    :mare5x.lispqr.galois
    :mare5x.lispqr.matrix
-   :mare5x.lispqr.image))
+   :mare5x.lispqr.image)
+  (:export
+   :encode->matrix
+   :encode->image))
 
