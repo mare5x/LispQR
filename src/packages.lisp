@@ -58,6 +58,7 @@
    :make-qr-matrix))
 
 (defpackage :mare5x.lispqr.encode
+  (:nicknames :lispqr)
   (:use
    :common-lisp
    :mare5x.lispqr.utils
