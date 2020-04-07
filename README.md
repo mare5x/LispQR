@@ -15,7 +15,7 @@ To write to PNG files, you will need to install [_zpng_](https://www.xach.com/li
 ;; (ql:quickload "lispqr")
 
 ;; Change into the 'encode' package.
-(in-package :mare5x.lispqr.encode)
+(in-package :mare5x.lispqr.encode)  ;; (in-package :lispqr)
 
 ;; Encode to a PNG image file.
 (encode->image "https://github.com/mare5x" "test.png" :ec-level :H)
