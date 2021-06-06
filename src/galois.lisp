@@ -62,7 +62,7 @@
 (defun polynom-mul (f g)
   ;; The order of f*g is ord(f) + ord(g).
   ;; A polynomial of order n has up to n + 1 coefficients.
-  (let ((result (make-array (+ (order f) (order g) 1) :element-type 'integer)))
+  (let ((result (make-array (+ (order f) (order g) 1) :element-type 'integer :initial-element 0)))
     (loop-index-value (i a) f
       do (loop-index-value (j b) g
            for exponent = (mul-exponents i j)

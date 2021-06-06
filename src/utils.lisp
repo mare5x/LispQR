@@ -35,7 +35,7 @@
   (let ((pad (mod (length bits) 8)))
     (if (zerop pad) (return-from pad-bits (copy-seq bits)))
     (concatenate 'bit-vector
-                 (make-array (- 8 pad) :element-type 'bit)
+                 (make-array (- 8 pad) :element-type 'bit :initial-element 0)
                  bits)))
 
 (defun splice-list (seq &optional (rtype 'list))

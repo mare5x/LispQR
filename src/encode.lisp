@@ -429,7 +429,7 @@
   "Encodes the given string 'str' using alphanumeric mode."
   (let ((values nil))
     ;; Step 1. Determine character values according to translation table.
-    ;; The value of each character is it's position (index) in the table.
+    ;; The value of each character is its position (index) in the table.
     (setf values (map 'vector #'(lambda (ch) (position ch +alphanumeric-table+)) str))
 
     ;; Step 2. Divide the result into groups of two decimal values.
