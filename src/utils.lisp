@@ -59,7 +59,7 @@
                                              :initial-contents (list n 0))))
 
   (let ((binary (decimal->binary (floor (/ n 2)))))
-    (vector-push-extend (mod n 2) binary)
+    (vector-push-extend (mod n 2) binary 1)  ; Extend by 1 because of underlying adjust-array call (issue #5)
     binary))
 
 (defun binary->decimal (seq)
@@ -70,8 +70,8 @@
 
 (defun shift-array (array k)
   (let* ((d (length array))
-         (n (+ d k)))
-    (adjust-array array n :fill-pointer n)
+         (n (+ d k))
+         (array (adjust-array array n :fill-pointer n :initial-element 0)))
     (when (< d n)
       (loop
         for i from (1- d) downto 0
